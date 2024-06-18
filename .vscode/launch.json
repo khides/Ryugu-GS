@@ -1,0 +1,40 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+      // {
+      //   "type": "java",
+      //   "name": "Report1",
+      //   "request": "launch",
+      //   "mainClass": "過去.Report1",
+      //   "projectName": "academic_fb9f7a37"
+      // },
+      // {
+      //   "type": "java",
+      //   "name": "Euler",
+      //   "request": "launch",
+      //   "mainClass": "過去.Euler",
+      //   "projectName": "academic_fb9f7a37"
+      // },
+      // {
+      //   "name": "C/C++ Runner: Debug Session",
+      //   "type": "lldb",
+      //   "request": "launch",
+      //   "args": [],
+      //   "cwd": "/Users/koki_mac/codes/academic/空力第二C/過去",
+      //   "program": "/Users/koki_mac/codes/academic/空力第二C/過去/build/Debug/outDebug"
+      // },
+      // {
+      //   "name": "Python: Current File",
+      //   "type": "python",
+      //   "request": "launch",
+      //   "program": "${file}"
+      // },
+      {
+        "name": "Python: Exec on File Dir",
+        "type": "python",
+        "request": "launch",
+        "program": "${file}",
+        "cwd": "${fileDirname}"
+      },
+    ]
+  }
