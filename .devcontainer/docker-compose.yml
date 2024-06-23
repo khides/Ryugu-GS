@@ -3,7 +3,7 @@ services:
     container_name: RyuguGS_Dev
     build: 
       context: ./.
-      dockerfile: ./devcontainer/Dockerfile
+      dockerfile: ./Dockerfile
     volumes:
       - ./.:/workspace
     environment:
@@ -13,3 +13,9 @@ services:
     tty: true
     working_dir: /workspace
     command: /bin/bash
+    networks:
+      - GS-network
+
+networks:
+  GS-network:
+    external: true
