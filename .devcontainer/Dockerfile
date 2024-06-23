@@ -1,49 +1,50 @@
+# 基本イメージを指定
 FROM nvcr.io/nvidia/cuda:11.8.0-devel-ubuntu20.04
 
-ENV DEBIAN_FRONTEND=noninteractive
-
-# パッケージキャッシュの修復
-RUN rm -f /var/lib/dpkg/status && touch /var/lib/dpkg/status
-RUN rm -f /var/lib/apt/extended_states
-RUN apt-get clean
-RUN rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get -f install
-
 # 必要なパッケージのインストール
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-    software-properties-common \
-    tzdata \
-    wget \
-    ninja-build \
-    ca-certificates \
-    curl \
-    clang \
-    language-pack-ja && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# タイムゾーンとロケールの設定
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get upgrade -y
+RUN apt-get install -y software-properties-common tzdata wget ninja-build
 ENV TZ=Asia/Tokyo
-RUN update-locale LANG=ja_JP.UTF-8
-ENV LANG=ja_JP.UTF-8
-ENV LANGUAGE=ja_JP:ja
-ENV LC_ALL=ja_JP.UTF-8
+RUN apt-get update && apt-get install -y language-pack-ja && \
+    update-locale LANG=ja_JP.UTF-8 && rm -rf /var/lib/apt/lists/*
+ENV LANG ja_JP.UTF-8
+ENV LANGUAGE ja_JP:ja
+ENV LC_ALL ja_JP.UTF-8
 
-WORKDIR /opt
+# ユーザーの追加
+ARG USER=developer
+RUN useradd -m -s /bin/bash ${USER} && \
+    echo "${USER}:${USER}" | chpasswd && \
+    usermod -aG sudo ${USER}
 
-# RYEのインストール
-ENV RYE_HOME="/opt/rye"
-ENV PATH="$RYE_HOME/shims:$PATH"
-ENV CUDA_HOME=/usr/local/cuda-11.8
-ENV PATH=/usr/local/cuda-11.8/bin:${PATH}
+# ユーザーを変更
+USER ${USER}
 
-SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
+# 作業ディレクトリの設定
+WORKDIR /home/${USER}/Ryugu-GS
 
-RUN curl -sSf https://rye.astral.sh/get | RYE_INSTALL_OPTION="--yes" bash && \
-    rye config --set-bool behavior.global-python=true && \
-    rye config --set-bool behavior.use-uv=true && \
-    chown -R vscode $RYE_HOME
+# 環境変数の設定
+ENV PATH /home/${USER}/conda/bin:$PATH
+ENV CUDA_HOME /usr/local/cuda-11.8
+ENV PATH /usr/local/cuda-11.8/bin:${PATH}
 
-ENV PYTHONUNBUFFERED True
+# Anacondaのインストール
+RUN wget https://repo.anaconda.com/archive/Anaconda3-2024.02-1-Linux-x86_64.sh -O ~/anaconda.sh && \
+    chmod +x ~/anaconda.sh && \
+    /bin/bash ~/anaconda.sh -b -p ~/conda && \
+    rm ~/anaconda.sh && \
+    ~/conda/bin/conda clean --all -y && \
+    echo ". ~/conda/etc/profile.d/conda.sh" >> ~/.bashrc && \
+    echo "conda activate base" >> ~/.bashrc
+
+# 環境ファイルからConda環境の作成
+RUN . ~/conda/etc/profile.d/conda.sh
+#  && \
+    # conda env create -f /home/developer/Ryugu-GS/3D-gaussian-splatting/gaussian-splatting/environment.yml
+
+# 作成した環境をアクティブにする
+# SHELL ["conda", "run", "-n", "gaussian_splatting", "/bin/bash", "-c"]
+
+# Docker コンテナのデフォルトコマンド
+CMD [ "/bin/bash" ]

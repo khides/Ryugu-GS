@@ -1,0 +1,29 @@
+services:
+  gs:
+    container_name: RyuguGS_Dev
+    build: 
+      context: ./.
+      dockerfile: ./Dockerfile
+    volumes:
+      - ./.:/workspace
+    restart: unless-stopped
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    tty: true
+    working_dir: /workspace
+    stdin_open: true
+    command: /bin/bash
+    networks:
+      - gs-network
+
+networks:
+  gs-network:
+    driver: bridge

@@ -1,9 +1,10 @@
-{    
-    "name": "Ryugu-GS Dev Container",
-    "dockerComposeFile": "docker-compose.yml",
-    "service": "ryugu-gs",
-    "workspaceFolder": "/home/developer/Ryugu-GS",
-    "postCreateCommand": "docker-compose exec ryugu-gs /bin/bash",
+{
+    "name": "RyuguGS Container(rye)",
+    "initializeCommand": "ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose; docker network inspect gs-network || docker network create gs-network",
+    "dockerComposeFile": "./docker-compose.yml",
+    "service": "gs",
+    "workspaceFolder": "/workspace",
+    "postCreateCommand": "cpu_type=$(uname -m) && if [ \"$cpu_type\" = \"aarch64\" ]; then rye sync --features=default; else rye sync --features=cpu; fi",
     "customizations": {
         "vscode": {
             "extensions": [
@@ -52,9 +53,7 @@
                 "python.testing.unittestEnabled": false,
                 "python.testing.pytestEnabled": true,
                 "python.defaultInterpreterPath": "/opt/rye/shims/python"
-            },
-            "remoteUser": "developer"
-
+            }
         }
     }
 }

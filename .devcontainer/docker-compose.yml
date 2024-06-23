@@ -1,29 +1,14 @@
+version: '3'
 services:
-  gs:
-    container_name: RyuguGS_Dev
-    build: 
-      context: ./.
-      dockerfile: ./Dockerfile
+  ryugu-gs:
+    build:
+      context: ..
+      dockerfile: Dockerfile
     volumes:
-      - ./.:/workspace
-    restart: unless-stopped
+      - ..:/home/developer/Ryugu-GS
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+      - TZ=Asia/Tokyo
+      - LANG=ja_JP.UTF-8
+      - LANGUAGE=ja_JP:ja
+      - LC_ALL=ja_JP.UTF-8
     tty: true
-    working_dir: /workspace
-    stdin_open: true
-    command: /bin/bash
-    networks:
-      - gs-network
-
-networks:
-  gs-network:
-    driver: bridge

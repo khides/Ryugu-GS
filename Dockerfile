@@ -1,12 +1,7 @@
 # 基本イメージを指定
-# FROM nvidia/cuda:11.8-base-ubuntu20.04
 FROM nvcr.io/nvidia/cuda:11.8.0-devel-ubuntu20.04
 
 # 必要なパッケージのインストール
-
-# RUN apt-get update --fix-missing && apt-get install -y wget bzip2 ca-certificates \
-    # libglib2.0-0 libxext6 libsm6 libxrender1 \
-    # git mercurial subversion sudo
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y software-properties-common tzdata wget ninja-build
@@ -24,20 +19,17 @@ RUN useradd -m -s /bin/bash ${USER} && \
     usermod -aG sudo ${USER}
 
 # ユーザーを変更
-# USER root
-# RUN chmod -R 777 /home/${USER}/3D-gaussian-splatting
 USER ${USER}
 
-
 # 作業ディレクトリの設定
-WORKDIR /home/${USER}/3D-gaussian-splatting
+WORKDIR /home/${USER}/Ryugu-GS
 
 # ソースコードをコンテナにコピーする
 COPY . .
 
 #  ユーザーを変更
 USER root
-RUN chmod -R 777 /home/${USER}/3D-gaussian-splatting
+RUN chmod -R 777 /home/${USER}/Ryugu-GS
 USER ${USER}
 
 # 環境変数の設定
@@ -57,8 +49,10 @@ RUN wget https://repo.anaconda.com/archive/Anaconda3-2024.02-1-Linux-x86_64.sh -
 # 環境ファイルからConda環境の作成
 RUN . ~/conda/etc/profile.d/conda.sh
 #  && \
-    # conda env create -f /home/${USER}/3D-gaussian-splatting/gaussian-splatting/environment.yml
+    # conda env create -f /home/developer/Ryugu-GS/3D-gaussian-splatting/gaussian-splatting/environment.yml
+
 # 作成した環境をアクティブにする
 # SHELL ["conda", "run", "-n", "gaussian_splatting", "/bin/bash", "-c"]
+
 # Docker コンテナのデフォルトコマンド
 CMD [ "/bin/bash" ]
