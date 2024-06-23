@@ -5,7 +5,7 @@ services:
     container_name: RyuguGS_Dev
     build: 
       context: ../
-      dockerfile: ./.devcontainer/Dockerfile
+      dockerfile: .devcontainer/Dockerfile
     volumes:
       - ..:/workspace
     environment:
