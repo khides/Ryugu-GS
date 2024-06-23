@@ -8,8 +8,8 @@ from scipy.spatial import cKDTree
 from sklearn.cluster import MiniBatchKMeans
 import logging
 from matplotlib import pyplot as plt
-import shutil
 import os
+import shutil
 
 class Log():
     def __init__(self, filename) -> None:
@@ -195,6 +195,7 @@ def update_images_bin(images_file, new_image_data):
         f.write(struct.pack('<i4d3diH', new_image_data['image_id'], *new_image_data['qvec'], *new_image_data['tvec'], new_image_data['camera_id'], len(new_image_data['name'])))
         f.write(new_image_data['name'].encode('utf-8'))
         for xy, point3D_id in zip(new_image_data['xys'], new_image_data['point3D_ids']):
+            point3D_id = int(point3D_id)  # Ensure point3D_id is an integer
             f.write(struct.pack('<ddq', xy[0], xy[1], point3D_id))
 
 # 回転行列をクォータニオンに変換する関数
@@ -328,7 +329,7 @@ def main():
         'qvec': quaternion_from_matrix(R),
         'tvec': tvec.flatten().tolist(),
         'xys': image_points.tolist(),
-        'point3D_ids': [int(id) for id in object_points.tolist()]  # Ensure point3D_ids are integers
+        'point3D_ids': [int(id) for id in feature_id_to_point3d_id.values()]  # Ensure point3D_ids are integers
     }
 
     new_images_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/1/images.bin'
