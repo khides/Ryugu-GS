@@ -272,49 +272,53 @@ def main():
                 image_points.append(keypoints[m.queryIdx].pt)
         object_points = np.array(object_points, dtype=np.float32)
         image_points = np.array(image_points, dtype=np.float32)
-        
-        # カメラの内部パラメータ
-        fx, fy, cx, cy = 9231, 9231, 512, 512
-        camera_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
-        dist_coeffs = np.zeros((4, 1))  # 歪みなしの場合
 
-        # solvePnPでカメラポーズを推定
-        _, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
-        R, _ = cv2.Rodrigues(rvec)
+        # 十分な対応点がある場合のみカメラポーズを推定
+        if len(object_points) >= 6:
+            # カメラの内部パラメータ
+            fx, fy, cx, cy = 9231, 9231, 512, 512
+            camera_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
+            dist_coeffs = np.zeros((4, 1))  # 歪みなしの場合
 
-        new_image_name = os.path.basename(image_file)
-        new_image_id = fetch_image_id(db_path, new_image_name)
+            # solvePnPでカメラポーズを推定
+            _, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
+            R, _ = cv2.Rodrigues(rvec)
 
-        if new_image_id is None:
-            new_image_id = max(images.keys()) + 1        
+            new_image_name = os.path.basename(image_file)
+            new_image_id = fetch_image_id(db_path, new_image_name)
 
-        new_image_data = {
-            'image_id': new_image_id,
-            'camera_id': 1,
-            'name': new_image_name,
-            'qvec': quaternion_from_matrix(R),
-            'tvec': tvec.flatten().tolist(),
-            'xys': image_points.tolist(),
-            'point3D_ids': [int(id) for id in feature_id_to_point3d_id.values()]  # Ensure point3D_ids are integers
-        }
+            if new_image_id is None:
+                new_image_id = max(images.keys()) + 1        
 
-        new_images_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/1/images.bin'
-        new_images_dir = os.path.dirname(new_images_file)
+            new_image_data = {
+                'image_id': new_image_id,
+                'camera_id': 1,
+                'name': new_image_name,
+                'qvec': quaternion_from_matrix(R),
+                'tvec': tvec.flatten().tolist(),
+                'xys': image_points.tolist(),
+                'point3D_ids': [int(id) for id in feature_id_to_point3d_id.values()]  # Ensure point3D_ids are integers
+            }
 
-        if os.path.exists(new_images_dir):
-            shutil.rmtree(new_images_dir)
+            new_images_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/2/images.bin'
+            new_images_dir = os.path.dirname(new_images_file)
 
-        shutil.copytree('./Ryugu_Data/Ryugu_mask_3-1/sparse/0', new_images_dir)
-        update_images_bin(new_images_file, new_image_data)
-        logger.info(f"Updated images.bin with new data for {new_image_name}")
+            if os.path.exists(new_images_dir):
+                shutil.rmtree(new_images_dir)
 
-        # 新しいカメラ位置をプロット
-        camera_position = -R.T @ tvec
-        camera_direction = R.T @ np.array([0, 0, 1])
-        ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                  camera_direction[0], camera_direction[1], camera_direction[2],
-                  length=0.5, color='b', arrow_length_ratio=0.5)
-    
+            shutil.copytree('./Ryugu_Data/Ryugu_mask_3-1/sparse/0', new_images_dir)
+            update_images_bin(new_images_file, new_image_data)
+            logger.info(f"Updated images.bin with new data for {new_image_name}")
+
+            # 新しいカメラ位置をプロット
+            camera_position = -R.T @ tvec
+            camera_direction = R.T @ np.array([0, 0, 1])
+            ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+                      camera_direction[0], camera_direction[1], camera_direction[2],
+                      length=0.5, color='b', arrow_length_ratio=0.5)
+        else:
+            logger.warning(f"Not enough points for pose estimation in {image_file}")
+
     ax.set_box_aspect([1, 1, 1])
     ax.set_xlim(-4, 4)
     ax.set_ylim(-4, 4)
