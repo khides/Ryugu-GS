@@ -1,6 +1,6 @@
 {
     "name": "RyuguGS Container",
-    "initializeCommand": "docker network inspect GS-network || docker network create GS-network",
+    "initializeCommand": "docker network inspect gs-network || docker network create gs-network",
     "dockerComposeFile": "./docker-compose.yml",
     "service": "gs",
     "workspaceFolder": "/workspace",
