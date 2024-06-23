@@ -4,20 +4,22 @@ services:
   GS:
     container_name: RyuguGS_Dev
     build: 
-      context: ../
-      dockerfile: .devcontainer/Dockerfile
+      context: ./.
+      dockerfile: ./Dockerfile
     volumes:
-      - ..:/workspace
+      - ./.:/workspace
+    restart: unless-stopped
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
     runtime: nvidia
     tty: true
-    stdin_open: true
     working_dir: /workspace
+    stdin_open: true
     command: /bin/bash
     networks:
       - GS-network
+    
 
 networks:
   GS-network:
