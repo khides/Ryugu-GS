@@ -225,6 +225,7 @@ def main():
     pre_features = load_features_from_npy(output_file)
     
     # 既存のcameras.binとimages.binを読み込む
+    # cameras = read_cameras_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/cameras.bin')
     images = read_images_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/images.bin')
 
     # Input2ディレクトリ内のすべての画像を処理
@@ -236,6 +237,7 @@ def main():
     ax = fig.add_subplot(111, projection='3d')
 
     # 既存のカメラ位置をプロット
+ # カメラ位置の計算とプロットデータの準備
     camera_positions = []
     for image_id, data in images.items():
         R = quaternion_to_rotation_matrix(data['qvec'])
@@ -244,9 +246,21 @@ def main():
         camera_positions.append(camera_position)
 
     camera_positions = np.array(camera_positions)
-    for camera_position in camera_positions:
-        ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                  camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='r', arrow_length_ratio=0.5)
+    cur = 0
+    for image_id, data in images.items():
+        R = quaternion_to_rotation_matrix(data['qvec'])
+        t = np.array(data['tvec']).reshape((3, 1))
+        camera_position = -R.T @ t
+        camera_direction = R.T @ np.array([0, 0, 1])
+        if cur == 0:
+            ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+                      camera_direction[0], camera_direction[1], camera_direction[2],
+                      length=0.5, color='r', arrow_length_ratio=0.5, label="BOX-A")
+            cur +=1
+        else:
+            ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+                      camera_direction[0], camera_direction[1], camera_direction[2],
+                      length=0.5, color='r', arrow_length_ratio=0.5)
 
     # 各画像に対してカメラポーズ推定を実行し、結果をプロット
     for image_file in image_files:
@@ -310,12 +324,16 @@ def main():
             update_images_bin(new_images_file, new_image_data)
             logger.info(f"Updated images.bin with new data for {new_image_name}")
 
-            # 新しいカメラ位置をプロット
+            # 3Dポイントをプロット
+            ax.scatter(object_points[:, 0], object_points[:, 1], object_points[:, 2], c='gray', marker='o')
+
+            # カメラの位置をプロット
             camera_position = -R.T @ tvec
+
+            # カメラの向きを矢印で表示
             camera_direction = R.T @ np.array([0, 0, 1])
             ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                      camera_direction[0], camera_direction[1], camera_direction[2],
-                      length=0.5, color='b', arrow_length_ratio=0.5)
+                    camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5, label="BOX-C")
         else:
             logger.warning(f"Not enough points for pose estimation in {image_file}")
 
@@ -326,6 +344,7 @@ def main():
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
+    ax.legend()
     plt.show()
 
     logger.info("Processed all images in Input2")
