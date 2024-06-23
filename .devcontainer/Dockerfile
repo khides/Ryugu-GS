@@ -23,6 +23,10 @@ USER ${USER}
 
 # 作業ディレクトリの設定
 WORKDIR /home/${USER}/Ryugu-GS
+#  ユーザーを変更
+USER root
+RUN chmod -R 777 /home/${USER}/Ryugu-GS
+USER ${USER}
 
 # 環境変数の設定
 ENV PATH /home/${USER}/conda/bin:$PATH
