@@ -1,7 +1,7 @@
 services:
   gs:
     container_name: RyuguGS_Dev
-    build:
+    build: 
       context: ./.
       dockerfile: ./Dockerfile
     volumes:
