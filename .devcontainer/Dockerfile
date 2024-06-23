@@ -1,7 +1,30 @@
 FROM nvcr.io/nvidia/cuda:11.8.0-devel-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get upgrade -y
+
+# パッケージキャッシュの修復
+# RUN rm -f /var/lib/dpkg/status && touch /var/lib/dpkg/status
+# RUN rm -f /var/lib/apt/extended_states
+# RUN apt-get clean
+# RUN rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && apt-get -f install
+
+# 必要なパッケージのインストール
+# RUN apt-get update && \
+#     apt-get upgrade -y && \
+#     apt-get install -y \
+#     software-properties-common \
+#     tzdata \
+#     wget \
+#     ninja-build \
+#     language-pack-ja 
+#     # ca-certificates \
+#     # curl \
+#     # clang \
+#     # apt-get clean && \
+#     # rm -rf /var/lib/apt/lists/*
+
+# RUN apt-get update && apt-get upgrade -y
 RUN apt-get install -y software-properties-common tzdata wget ninja-build
 ENV TZ=Asia/Tokyo
 RUN apt-get update && apt-get install -y language-pack-ja && \
@@ -9,21 +32,20 @@ RUN apt-get update && apt-get install -y language-pack-ja && \
 ENV LANG ja_JP.UTF-8
 ENV LANGUAGE ja_JP:ja
 ENV LC_ALL ja_JP.UTF-8
-
-ENV CUDA_HOME /usr/local/cuda-11.8
-ENV PATH /usr/local/cuda-11.8/bin:${PATH}
-
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    clang && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+# # タイムゾーンとロケールの設定
+# ENV TZ=Asia/Tokyo
+# RUN update-locale LANG=ja_JP.UTF-8
+# ENV LANG=ja_JP.UTF-8
+# ENV LANGUAGE=ja_JP:ja
+# ENV LC_ALL=ja_JP.UTF-8
 
 WORKDIR /opt
 
+# RYEのインストール
 ENV RYE_HOME="/opt/rye"
 ENV PATH="$RYE_HOME/shims:$PATH"
+ENV CUDA_HOME=/usr/local/cuda-11.8
+ENV PATH=/usr/local/cuda-11.8/bin:${PATH}
 
 SHELL [ "/bin/bash", "-o", "pipefail", "-c" ]
 

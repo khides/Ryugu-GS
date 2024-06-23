@@ -1,7 +1,5 @@
-version: '3.8'
-
 services:
-  GS:
+  gs:
     container_name: RyuguGS_Dev
     build: 
       context: ./.

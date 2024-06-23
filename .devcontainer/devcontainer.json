@@ -2,7 +2,7 @@
     "name": "RyuguGS Container",
     "initializeCommand": "docker network inspect GS-network || docker network create GS-network",
     "dockerComposeFile": "./docker-compose.yml",
-    "service": "GS",
+    "service": "gs",
     "workspaceFolder": "/workspace",
     "postCreateCommand": "cpu_type=$(uname -m) && if [ \"$cpu_type\" = \"aarch64\" ]; then rye sync --features=default; else rye sync --features=cpu; fi",
     "customizations": {
