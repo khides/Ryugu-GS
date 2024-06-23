@@ -95,7 +95,7 @@ def fetch_image_id(db_path, image_name):
     return image_id[0] if image_id else None
 
 # 特徴点の検出と記述子の計算を行う関数
-def detect_features(image_path, nfeatures=5000, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=10, sigma=1.6):
+def detect_features(image_path, nfeatures=10000, nOctaveLayers=4, contrastThreshold=0.004, edgeThreshold=20, sigma=1.6):
     """
     SIFTのパラメータ:
     - nfeatures: 検出する特徴点の最大数
@@ -111,7 +111,7 @@ def detect_features(image_path, nfeatures=5000, nOctaveLayers=3, contrastThresho
     return keypoints, descriptors
 
 # 特徴点のマッチングを行う関数
-def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=False, distance_threshold=0.8):
+def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=False, distance_threshold=0.85):
     """
     特徴点のマッチングのパラメータ:
     - normType: 特徴点の距離の計算に使用するノルムの種類
