@@ -95,7 +95,7 @@ def fetch_image_id(db_path, image_name):
     return image_id[0] if image_id else None
 
 # 特徴点の検出と記述子の計算を行う関数
-def detect_features(image_path, nfeatures=10000, nOctaveLayers=4, contrastThreshold=0.004, edgeThreshold=20, sigma=1.6):
+def detect_features(image_path, nfeatures=10000, nOctaveLayers=6, contrastThreshold=0.004, edgeThreshold=5, sigma=1.2):
     """
     SIFTのパラメータ:
     - nfeatures: 検出する特徴点の最大数
@@ -111,7 +111,7 @@ def detect_features(image_path, nfeatures=10000, nOctaveLayers=4, contrastThresh
     return keypoints, descriptors
 
 # 特徴点のマッチングを行う関数
-def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=False, distance_threshold=0.85):
+def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=True, distance_threshold=0.85):
     """
     特徴点のマッチングのパラメータ:
     - normType: 特徴点の距離の計算に使用するノルムの種類
@@ -122,8 +122,8 @@ def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=
     descriptors2 = descriptors2.astype(np.float32)
 
     # FLANNのインデックスパラメータと検索パラメータ
-    index_params = dict(algorithm=1, trees=5)  # 1はFLANN_INDEX_KDTREE
-    search_params = dict(checks=50)  # チェックの回数
+    index_params = dict(algorithm=1, trees=10)  # 1はFLANN_INDEX_KDTREE
+    search_params = dict(checks=100)  # チェックの回数
     flann = cv2.FlannBasedMatcher(index_params, search_params)
     knn_matches = flann.knnMatch(descriptors1, descriptors2, k=2)
 
