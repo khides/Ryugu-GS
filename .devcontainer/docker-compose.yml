@@ -1,0 +1,15 @@
+services:
+  GS:
+    container_name: RyuguGS_Dev
+    build: 
+      context: ./.
+      dockerfile: ./devcontainer/Dockerfile
+    volumes:
+      - ./.:/workspace
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+    runtime: nvidia
+    tty: true
+    working_dir: /workspace
+    command: /bin/bash
