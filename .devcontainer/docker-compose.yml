@@ -3,7 +3,7 @@ services:
     container_name: RyuguGS_Dev
     build: 
       context: ./.
-      dockerfile: ./.devcontainer/Dockerfile
+      dockerfile: ./Dockerfile
     volumes:
       - ./.:/workspace
     restart: unless-stopped
