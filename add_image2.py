@@ -246,7 +246,7 @@ def main():
     camera_positions = np.array(camera_positions)
     for camera_position in camera_positions:
         ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                  0, 0, 1, length=0.5, color='r', arrow_length_ratio=0.5)
+                  camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='r', arrow_length_ratio=0.5)
 
     # 各画像に対してカメラポーズ推定を実行し、結果をプロット
     for image_file in image_files:
