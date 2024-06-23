@@ -2,7 +2,6 @@ import numpy as np
 import sqlite3
 import struct
 import cv2
-from plyfile import PlyData
 import quaternion
 from scipy.spatial import cKDTree
 from sklearn.cluster import MiniBatchKMeans
@@ -226,62 +225,17 @@ def main():
     pre_features = load_features_from_npy(output_file)
     
     # 既存のcameras.binとimages.binを読み込む
-    # cameras = read_cameras_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/cameras.bin')
     images = read_images_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/images.bin')
 
+    # Input2ディレクトリ内のすべての画像を処理
+    input_dir = './Ryugu_Data/Ryugu_mask_3-1/Input2'
+    image_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.jpeg')]
 
-    # 新しい画像の特徴点を検出
-    new_image_path = './Ryugu_Data/Ryugu_mask_3-1/Input2/hyb2_onc_20191023_011507_tvf_l2a.fit.jpeg'
-    keypoints, descriptors = detect_features(new_image_path)
-
-
-    # 特徴点のマッチング
-    matches = match_features(descriptors, pre_features)
-
-    # 3DポイントのIDを取得して、対応する3Dポイントの座標を取得
-    feature_id_to_point3d_id = {}
-    for point3d_id, point_data in pre_points3d.items():
-        for image_id, feature_id in point_data['track']:
-            global_feature_id = image_feature_start_indices[image_id] + feature_id
-            feature_id_to_point3d_id[global_feature_id] = point3d_id
-
-    object_points = []
-    image_points = []
-    for m in matches:
-        point3d_id = feature_id_to_point3d_id.get(m.trainIdx, None)
-        if point3d_id is not None:
-            object_points.append(pre_points3d[point3d_id]['xyz'])
-            image_points.append(keypoints[m.queryIdx].pt)
-    object_points = np.array(object_points, dtype=np.float32)
-    image_points = np.array(image_points, dtype=np.float32)
-    
-
-    # カメラの内部パラメータ
-    fx, fy, cx, cy = 9231, 9231, 512, 512
-    camera_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
-    dist_coeffs = np.zeros((4, 1))  # 歪みなしの場合
-
-    # solvePnPでカメラポーズを推定
-    _, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
-    R, _ = cv2.Rodrigues(rvec)
-    
-    # カメラポーズを3次元空間に矢印で図示
+    # 3Dプロットの準備
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
-    # 3Dポイントをプロット
-    ax.scatter(object_points[:, 0], object_points[:, 1], object_points[:, 2], c='gray', marker='o')
-
-    # カメラの位置をプロット
-    camera_position = -R.T @ tvec
-
-    # カメラの向きを矢印で表示
-    camera_direction = R.T @ np.array([0, 0, 1])
-    ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-              camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5, label="BOX-C")
-
-    
-    # カメラ位置の計算とプロットデータの準備
+    # 既存のカメラ位置をプロット
     camera_positions = []
     for image_id, data in images.items():
         R = quaternion_to_rotation_matrix(data['qvec'])
@@ -290,22 +244,77 @@ def main():
         camera_positions.append(camera_position)
 
     camera_positions = np.array(camera_positions)
-    cur = 0
-    for image_id, data in images.items():
-        R = quaternion_to_rotation_matrix(data['qvec'])
-        t = np.array(data['tvec']).reshape((3, 1))
-        camera_position = -R.T @ t
-        camera_direction = R.T @ np.array([0, 0, 1])
-        if cur == 0:
-            ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                      camera_direction[0], camera_direction[1], camera_direction[2],
-                      length=0.5, color='r', arrow_length_ratio=0.5, label="BOX-A")
-            cur +=1
-        else:
-            ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                      camera_direction[0], camera_direction[1], camera_direction[2],
-                      length=0.5, color='r', arrow_length_ratio=0.5)
+    for camera_position in camera_positions:
+        ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+                  0, 0, 1, length=0.5, color='r', arrow_length_ratio=0.5)
 
+    # 各画像に対してカメラポーズ推定を実行し、結果をプロット
+    for image_file in image_files:
+        # 新しい画像の特徴点を検出
+        keypoints, descriptors = detect_features(image_file)
+
+        # 特徴点のマッチング
+        matches = match_features(descriptors, pre_features)
+
+        # 3DポイントのIDを取得して、対応する3Dポイントの座標を取得
+        feature_id_to_point3d_id = {}
+        for point3d_id, point_data in pre_points3d.items():
+            for image_id, feature_id in point_data['track']:
+                global_feature_id = image_feature_start_indices[image_id] + feature_id
+                feature_id_to_point3d_id[global_feature_id] = point3d_id
+
+        object_points = []
+        image_points = []
+        for m in matches:
+            point3d_id = feature_id_to_point3d_id.get(m.trainIdx, None)
+            if point3d_id is not None:
+                object_points.append(pre_points3d[point3d_id]['xyz'])
+                image_points.append(keypoints[m.queryIdx].pt)
+        object_points = np.array(object_points, dtype=np.float32)
+        image_points = np.array(image_points, dtype=np.float32)
+        
+        # カメラの内部パラメータ
+        fx, fy, cx, cy = 9231, 9231, 512, 512
+        camera_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
+        dist_coeffs = np.zeros((4, 1))  # 歪みなしの場合
+
+        # solvePnPでカメラポーズを推定
+        _, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
+        R, _ = cv2.Rodrigues(rvec)
+
+        new_image_name = os.path.basename(image_file)
+        new_image_id = fetch_image_id(db_path, new_image_name)
+
+        if new_image_id is None:
+            new_image_id = max(images.keys()) + 1        
+
+        new_image_data = {
+            'image_id': new_image_id,
+            'camera_id': 1,
+            'name': new_image_name,
+            'qvec': quaternion_from_matrix(R),
+            'tvec': tvec.flatten().tolist(),
+            'xys': image_points.tolist(),
+            'point3D_ids': [int(id) for id in feature_id_to_point3d_id.values()]  # Ensure point3D_ids are integers
+        }
+
+        new_images_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/1/images.bin'
+        new_images_dir = os.path.dirname(new_images_file)
+
+        if os.path.exists(new_images_dir):
+            shutil.rmtree(new_images_dir)
+
+        shutil.copytree('./Ryugu_Data/Ryugu_mask_3-1/sparse/0', new_images_dir)
+        update_images_bin(new_images_file, new_image_data)
+        logger.info(f"Updated images.bin with new data for {new_image_name}")
+
+        # 新しいカメラ位置をプロット
+        camera_position = -R.T @ tvec
+        camera_direction = R.T @ np.array([0, 0, 1])
+        ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+                  camera_direction[0], camera_direction[1], camera_direction[2],
+                  length=0.5, color='b', arrow_length_ratio=0.5)
+    
     ax.set_box_aspect([1, 1, 1])
     ax.set_xlim(-4, 4)
     ax.set_ylim(-4, 4)
@@ -313,36 +322,9 @@ def main():
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
-    ax.legend()
     plt.show()
 
-    new_image_name = 'hyb2_onc_20191023_011507_tvf_l2a.fit.jpeg'
-    new_image_id = fetch_image_id(db_path, new_image_name)
-
-    if new_image_id is None:
-        new_image_id = max(images.keys()) + 1        
-
-    new_image_data = {
-        'image_id': new_image_id,
-        'camera_id': 1,
-        'name': new_image_name,
-        'qvec': quaternion_from_matrix(R),
-        'tvec': tvec.flatten().tolist(),
-        'xys': image_points.tolist(),
-        'point3D_ids': [int(id) for id in feature_id_to_point3d_id.values()]  # Ensure point3D_ids are integers
-    }
-
-    new_images_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/1/images.bin'
-    new_images_dir = os.path.dirname(new_images_file)
-
-    # if not os.path.exists(new_images_dir):
-    #     os.makedirs(new_images_dir)
-    if os.path.exists(new_images_dir):
-        shutil.rmtree(new_images_dir)
-
-    shutil.copytree('./Ryugu_Data/Ryugu_mask_3-1/sparse/0', new_images_dir)
-    update_images_bin(new_images_file, new_image_data)
-    logger.info("Updated images.bin with new data")
+    logger.info("Processed all images in Input2")
 
 if __name__ == "__main__":
     main()
