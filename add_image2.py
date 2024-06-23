@@ -8,10 +8,10 @@ from scipy.spatial import cKDTree
 from sklearn.cluster import MiniBatchKMeans
 import logging
 from matplotlib import pyplot as plt
+import shutil
 
 class Log():
     def __init__(self, filename) -> None:
-        # ログファイルの設定
         logging.basicConfig(filename=filename, level=logging.DEBUG, 
                             format='%(asctime)s %(levelname)s:%(message)s', filemode='w')
     
@@ -34,11 +34,9 @@ def extract_features_from_db(db_path):
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    # すべての特徴点の記述子を抽出
     cursor.execute("SELECT image_id, data FROM descriptors")
     descriptors = cursor.fetchall()
     
-    # データをnumpy配列に変換
     all_descriptors = []
     image_feature_start_indices = {}
     current_index = 0
@@ -49,10 +47,8 @@ def extract_features_from_db(db_path):
         current_index += desc_array.shape[0]
 
     conn.close()
-    
-    # 特徴点の記述子をnumpy配列に変換
     all_descriptors = np.vstack(all_descriptors)
-    logger.info(image_feature_start_indices)
+    logger.info(f"Extracted feature start indices: {image_feature_start_indices}")
     return all_descriptors, image_feature_start_indices
 
 # 特徴点の記述子を保存する関数
@@ -86,7 +82,7 @@ def read_points3d_bin(file_path):
 
 # NPYファイルから特徴点を読み込む関数
 def load_features_from_npy(features_file):
-    logger.info("load features from database")
+    logger.info(f"Loading features from {features_file}")
     return np.load(features_file)
 
 # Databaseから画像のIDを取得する関数
@@ -111,7 +107,7 @@ def detect_features(image_path, nfeatures=5000, nOctaveLayers=3, contrastThresho
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     sift = cv2.SIFT_create(nfeatures=nfeatures, nOctaveLayers=nOctaveLayers, contrastThreshold=contrastThreshold, edgeThreshold=edgeThreshold, sigma=sigma)
     keypoints, descriptors = sift.detectAndCompute(image, None)
-    logger.info("detected features from new image")
+    logger.info(f"Detected {len(keypoints)} features from {image_path}")
     return keypoints, descriptors
 
 # 特徴点のマッチングを行う関数
@@ -125,34 +121,20 @@ def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=
     descriptors1 = descriptors1.astype(np.float32)
     descriptors2 = descriptors2.astype(np.float32)
 
-    logger.info(f"Descriptors1 shape: {descriptors1.shape}")
-    logger.info(f"Descriptors2 shape: {descriptors2.shape}")
-    logger.info(f"Descriptors1 dtype: {descriptors1.dtype}")
-    logger.info(f"Descriptors2 dtype: {descriptors2.dtype}")
-
     # FLANNのインデックスパラメータと検索パラメータ
     index_params = dict(algorithm=1, trees=5)  # 1はFLANN_INDEX_KDTREE
     search_params = dict(checks=50)  # チェックの回数
-
     flann = cv2.FlannBasedMatcher(index_params, search_params)
     knn_matches = flann.knnMatch(descriptors1, descriptors2, k=2)
 
-    logger.info("cross check")
     good_matches = []
     for m, n in knn_matches:
         if m.distance < distance_threshold * n.distance:
             good_matches.append(m)
-
-    logger.info("distance check")
     # if distance_threshold is not None:
     #     good_matches = [m for m in good_matches if m.distance < distance_threshold]
-
     good_matches = sorted(good_matches, key=lambda x: x.distance)
-    for m in good_matches:
-        logger.info(m.queryIdx)
-        logger.info(m.trainIdx)
-        logger.info(m.distance)
-    logger.info("matched features model and new image")
+    logger.info(f"Found {len(good_matches)} good matches")
     return good_matches
 
 # バイナリファイルを読み込む関数 (cameras.bin)
@@ -219,7 +201,6 @@ def quaternion_from_matrix(matrix):
     q = quaternion.from_rotation_matrix(matrix)
     return [q.x, q.y, q.z, q.w]
 
-
 # Quaternionを回転行列に変換する関数
 def quaternion_to_rotation_matrix(q):
     q = np.quaternion(q[0], q[1], q[2], q[3])
@@ -250,8 +231,7 @@ def main():
     # 新しい画像の特徴点を検出
     new_image_path = './Ryugu_Data/Ryugu_mask_3-1/Input2/hyb2_onc_20191023_011507_tvf_l2a.fit.jpeg'
     keypoints, descriptors = detect_features(new_image_path)
-    logger.info(len(keypoints))
-    logger.info(len(descriptors))
+
 
     # 特徴点のマッチング
     matches = match_features(descriptors, pre_features)
@@ -262,23 +242,18 @@ def main():
         for image_id, feature_id in point_data['track']:
             global_feature_id = image_feature_start_indices[image_id] + feature_id
             feature_id_to_point3d_id[global_feature_id] = point3d_id
-    # logger.info(feature_id_to_point3d_id)
 
     object_points = []
     image_points = []
-    logger.info(matches)
     for m in matches:
         point3d_id = feature_id_to_point3d_id.get(m.trainIdx, None)
-        logger.info(m.trainIdx)
-        logger.info(point3d_id)
         if point3d_id is not None:
             object_points.append(pre_points3d[point3d_id]['xyz'])
             image_points.append(keypoints[m.queryIdx].pt)
     object_points = np.array(object_points, dtype=np.float32)
     image_points = np.array(image_points, dtype=np.float32)
     
-    logger.info(object_points)
-    logger.info(image_points)
+
     # カメラの内部パラメータ
     fx, fy, cx, cy = 9231, 9231, 512, 512
     camera_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
@@ -288,7 +263,6 @@ def main():
     _, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
     R, _ = cv2.Rodrigues(rvec)
     
-    logger.info(R)
     # カメラポーズを3次元空間に矢印で図示
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
@@ -298,19 +272,12 @@ def main():
 
     # カメラの位置をプロット
     camera_position = -R.T @ tvec
-    # ax.scatter(camera_position[0], camera_position[1], camera_position[2], c='b', marker='o')
 
     # カメラの向きを矢印で表示
     camera_direction = R.T @ np.array([0, 0, 1])
     ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-            camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5, label="BOX-C")
+              camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5, label="BOX-C")
 
-    # # 軸ラベル
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    # ax.set_zlabel('Z')
-
-    # plt.show()
     
     # カメラ位置の計算とプロットデータの準備
     camera_positions = []
@@ -320,19 +287,7 @@ def main():
         camera_position = -R.T @ t
         camera_positions.append(camera_position)
 
-    # # 3Dポイントのプロット
-    # fig = plt.figure()
-    # ax = fig.add_subplot(111, projection='3d')
-
-    # 3Dポイントをプロット
-    # for point_id, data in pre_points3d.items():
-    #     ax.scatter(data['xyz'][0], data['xyz'][1], data['xyz'][2], c='k', marker='o')
-
-    # カメラ位置をプロット
     camera_positions = np.array(camera_positions)
-    # ax.scatter(camera_positions[:, 0], camera_positions[:, 1], camera_positions[:, 2], c='r', marker='o')
-
-    # カメラの向きを矢印で表示
     cur = 0
     for image_id, data in images.items():
         R = quaternion_to_rotation_matrix(data['qvec'])
@@ -344,46 +299,42 @@ def main():
                       camera_direction[0], camera_direction[1], camera_direction[2],
                       length=0.5, color='r', arrow_length_ratio=0.5, label="BOX-A")
             cur +=1
-        else :
+        else:
             ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                    camera_direction[0], camera_direction[1], camera_direction[2],
-                    length=0.5, color='r', arrow_length_ratio=0.5)
-    
-    ax.set_box_aspect([1, 1, 1])  # 等間隔のスケールに設定
+                      camera_direction[0], camera_direction[1], camera_direction[2],
+                      length=0.5, color='r', arrow_length_ratio=0.5)
+
+    ax.set_box_aspect([1, 1, 1])
     ax.set_xlim(-4, 4)
     ax.set_ylim(-4, 4)
     ax.set_zlim(-4, 4)
-    # 軸ラベル
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     ax.legend()
-
     plt.show()
 
+    new_image_name = 'hyb2_onc_20191023_011507_tvf_l2a.fit.jpeg'
+    new_image_id = fetch_image_id(db_path, new_image_name)
 
-#     # Colmapのデータベースから画像IDを取得
-#     new_image_name = 'hyb2_onc_20191023_011507_tvf_l2a.fit.jpeg'
-#     new_image_id = fetch_image_id(db_path, new_image_name)
+    if new_image_id is None:
+        new_image_id = max(images.keys()) + 1        
 
-#     if new_image_id is None:
-#         new_image_id = max(images.keys()) + 1        
+    new_image_data = {
+        'image_id': new_image_id,
+        'camera_id': 1,
+        'name': new_image_name,
+        'qvec': quaternion_from_matrix(R),
+        'tvec': tvec.flatten().tolist(),
+        'xys': image_points.tolist(),
+        'point3D_ids': object_points.tolist()
+    }
 
-#     # 新しい画像データを構築
-#     new_image_data = {
-#         'image_id': new_image_id,
-#         'camera_id': 1,
-#         'name': new_image_name,
-#         'qvec': quaternion_from_matrix(R),
-#         'tvec': tvec.flatten().tolist(),
-#         'xys': image_points.tolist(),
-#         'point3D_ids':object_points.tolist()
-#     }
-
-#     # 既存のimages.binに新しいデータを追加
-#     update_images_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/1/images.bin', new_image_data)
-
-#     logger.info("カメラパラメータと画像情報を更新しました。")
+    new_images_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/1/images.bin'
+    
+    shutil.copy('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/images.bin', new_images_file)
+    update_images_bin(new_images_file, new_image_data)
+    logger.info("Updated images.bin with new data")
 
 if __name__ == "__main__":
     main()
