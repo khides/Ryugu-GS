@@ -1,6 +1,6 @@
 {
     "name": "RyuguGS Container",
-    "dockerComposeFile": "./docker-compose.yml",
+    "dockerComposeFile": "./.devcontainer/docker-compose.yml",
     "service": "GS",
     "workspaceFolder": "/workspace",
     "postCreateCommand": "rye sync requirements.txt",
