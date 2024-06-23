@@ -9,6 +9,7 @@ from sklearn.cluster import MiniBatchKMeans
 import logging
 from matplotlib import pyplot as plt
 import shutil
+import os
 
 class Log():
     def __init__(self, filename) -> None:
@@ -327,12 +328,18 @@ def main():
         'qvec': quaternion_from_matrix(R),
         'tvec': tvec.flatten().tolist(),
         'xys': image_points.tolist(),
-        'point3D_ids': object_points.tolist()
+        'point3D_ids': [int(id) for id in object_points.tolist()]  # Ensure point3D_ids are integers
     }
 
     new_images_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/1/images.bin'
-    
-    shutil.copy('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/images.bin', new_images_file)
+    new_images_dir = os.path.dirname(new_images_file)
+
+    # if not os.path.exists(new_images_dir):
+    #     os.makedirs(new_images_dir)
+    if os.path.exists(new_images_dir):
+        shutil.rmtree(new_images_dir)
+
+    shutil.copytree('./Ryugu_Data/Ryugu_mask_3-1/sparse/0', new_images_dir)
     update_images_bin(new_images_file, new_image_data)
     logger.info("Updated images.bin with new data")
 
