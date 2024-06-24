@@ -95,7 +95,7 @@ def fetch_image_id(db_path, image_name):
     return image_id[0] if image_id else None
 
 # 特徴点の検出と記述子の計算を行う関数
-def detect_features(image_path, nfeatures=100000, nOctaveLayers=6, contrastThreshold=0.04, edgeThreshold=5, sigma=1.2):
+def detect_features(image_path, nfeatures=5000, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=10, sigma=1.6):
     """
     SIFTのパラメータ:
     - nfeatures: 検出する特徴点の最大数
@@ -229,7 +229,7 @@ def main():
     images = read_images_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/images.bin')
 
     # Input2ディレクトリ内のすべての画像を処理
-    input_dir = './Ryugu_Data/Ryugu_mask_3-1/Input3'
+    input_dir = './Ryugu_Data/Ryugu_mask_3-1/Input2'
     image_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.jpeg')]
 
     # 3Dプロットの準備
@@ -237,7 +237,7 @@ def main():
     ax = fig.add_subplot(111, projection='3d')
 
     # 既存のカメラ位置をプロット
- # カメラ位置の計算とプロットデータの準備
+     # カメラ位置の計算とプロットデータの準備
     camera_positions = []
     for image_id, data in images.items():
         R = quaternion_to_rotation_matrix(data['qvec'])
@@ -263,6 +263,7 @@ def main():
                       length=0.5, color='r', arrow_length_ratio=0.5)
 
     # 各画像に対してカメラポーズ推定を実行し、結果をプロット
+    cur = 0
     for image_file in image_files:
         # 新しい画像の特徴点を検出
         keypoints, descriptors = detect_features(image_file)
@@ -331,9 +332,16 @@ def main():
             camera_position = -R.T @ tvec
 
             # カメラの向きを矢印で表示
-            camera_direction = R.T @ np.array([0, 0, 1])
-            ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+            if (cur == 0):
+                camera_direction = R.T @ np.array([0, 0, 1])
+                ax.quiver(camera_position[0], camera_position[1], camera_position[2],
                     camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5, label="BOX-C")
+                cur += 1
+            else:
+                camera_direction = R.T @ np.array([0, 0, 1])
+                ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+                    camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5)
+
         else:
             logger.warning(f"Not enough points for pose estimation in {image_file}")
 
@@ -347,7 +355,7 @@ def main():
     ax.legend()
     plt.show()
 
-    logger.info("Processed all images in Input3")
+    logger.info("Processed all images in Input")
 
 if __name__ == "__main__":
     main()
