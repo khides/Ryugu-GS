@@ -95,7 +95,7 @@ def fetch_image_id(db_path, image_name):
     return image_id[0] if image_id else None
 
 # 特徴点の検出と記述子の計算を行う関数
-def detect_features(image_path, nfeatures=5000, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=10, sigma=1.6):
+def detect_features(image_path, nfeatures=10000, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=10, sigma=1.6):
     """
     SIFTのパラメータ:
     - nfeatures: 検出する特徴点の最大数
@@ -110,6 +110,10 @@ def detect_features(image_path, nfeatures=5000, nOctaveLayers=3, contrastThresho
     logger.info(f"Detected {len(keypoints)} features from {image_path}")
     return keypoints, descriptors
 
+def normalize_descriptors(descriptors):
+    # 特徴量を0-1の範囲に正規化
+    return descriptors / np.linalg.norm(descriptors, axis=1, keepdims=True)
+
 # 特徴点のマッチングを行う関数
 def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=True, distance_threshold=0.8):
     """
@@ -118,21 +122,32 @@ def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=
     - crossCheck: クロスチェックを行うかどうか
     - distance_threshold: マッチングの距離の閾値
     """
+    # descriptors1 = normalize_descriptors(descriptors1.astype(np.float32))
+    # descriptors2 = normalize_descriptors(descriptors2.astype(np.float32)) 
     descriptors1 = descriptors1.astype(np.float32)
     descriptors2 = descriptors2.astype(np.float32)
 
+    # BFMのインスタンスを作成
+    # bf = cv2.BFMatcher(normType=normType, crossCheck=crossCheck)
+    # matches = bf.match(descriptors1, descriptors2)
+    # good_matches = []
+    # if distance_threshold is not None:
+    #     good_matches = [m for m in matches if m.distance < distance_threshold* max([m.distance for m in matches])]
+    # logger.info(matches[0].distance)
+    
+    
     # FLANNのインデックスパラメータと検索パラメータ
     index_params = dict(algorithm=1, trees=5)  # 1はFLANN_INDEX_KDTREE
     search_params = dict(checks=50)  # チェックの回数
     flann = cv2.FlannBasedMatcher(index_params, search_params)
-    knn_matches = flann.knnMatch(descriptors1, descriptors2, k=2)
-
+    matches = flann.knnMatch(descriptors1, descriptors2, k=2)    
+    logger.info(f"Found {len(matches)} ")
     good_matches = []
-    for m, n in knn_matches:
+    # 距離の閾値でフィルタリング
+    for m, n in matches:
         if m.distance < distance_threshold * n.distance:
             good_matches.append(m)
-    # if distance_threshold is not None:
-    #     good_matches = [m for m in good_matches if m.distance < distance_threshold]
+    # good_matches = matches
     good_matches = sorted(good_matches, key=lambda x: x.distance)
     logger.info(f"Found {len(good_matches)} good matches")
     return good_matches
@@ -229,7 +244,7 @@ def main():
     images = read_images_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/images.bin')
 
     # Input2ディレクトリ内のすべての画像を処理
-    input_dir = './Ryugu_Data/Ryugu_mask_3-1/Input2'
+    input_dir = './Ryugu_Data/Ryugu_mask_3-1/Input3hist'
     image_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.jpeg')]
 
     # 3Dプロットの準備
