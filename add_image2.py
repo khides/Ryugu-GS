@@ -137,15 +137,15 @@ def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=
     
     
     # FLANNのインデックスパラメータと検索パラメータ
-    index_params = dict(algorithm=1, trees=5)  # 1はFLANN_INDEX_KDTREE
-    search_params = dict(checks=50)  # チェックの回数
+    index_params = dict(algorithm=1, trees=20)  # 1はFLANN_INDEX_KDTREE
+    search_params = dict(checks=200)  # チェックの回数
     flann = cv2.FlannBasedMatcher(index_params, search_params)
     matches = flann.knnMatch(descriptors1, descriptors2, k=2)    
     logger.info(f"Found {len(matches)} ")
     good_matches = []
     # 距離の閾値でフィルタリング
     for m, n in matches:
-        if m.distance < distance_threshold * n.distance:
+    #     if m.distance < distance_threshold * n.distance:
             good_matches.append(m)
     # good_matches = matches
     good_matches = sorted(good_matches, key=lambda x: x.distance)
@@ -244,7 +244,7 @@ def main():
     images = read_images_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/images.bin')
 
     # Input2ディレクトリ内のすべての画像を処理
-    input_dir = './Ryugu_Data/Ryugu_mask_3-1/Input3hist'
+    input_dir = './Ryugu_Data/Ryugu_mask_3-1/Input2hist'
     image_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.jpeg')]
 
     # 3Dプロットの準備
@@ -361,9 +361,9 @@ def main():
             logger.warning(f"Not enough points for pose estimation in {image_file}")
 
     ax.set_box_aspect([1, 1, 1])
-    ax.set_xlim(-4, 4)
-    ax.set_ylim(-4, 4)
-    ax.set_zlim(-4, 4)
+    ax.set_xlim(-10, 10)
+    ax.set_ylim(-10, 10)
+    ax.set_zlim(-10, 10)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
