@@ -229,15 +229,15 @@ def main():
     output_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/0/features.npy'
 
     # 特徴点の記述子を抽出
-    features, image_feature_start_indices = extract_features_from_db(db_path)
+    pre_features, image_feature_start_indices = extract_features_from_db(db_path)
         
     # 特徴点の記述子を保存
-    save_features_to_npy(features, output_file)
+    # save_features_to_npy(features, output_file)
     
     # 既存の3Dポイントと特徴点を読み込む
     points3d_bin_path = './Ryugu_Data/Ryugu_mask_3-1/sparse/0/points3D.bin'
     pre_points3d = read_points3d_bin(points3d_bin_path)
-    pre_features = load_features_from_npy(output_file)
+    # pre_features = load_features_from_npy(output_file)
     
     # 既存のcameras.binとimages.binを読み込む
     # cameras = read_cameras_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/cameras.bin')
