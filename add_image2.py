@@ -95,7 +95,7 @@ def fetch_image_id(db_path, image_name):
     return image_id[0] if image_id else None
 
 # 特徴点の検出と記述子の計算を行う関数
-def detect_features(image_path, nfeatures=10000, nOctaveLayers=3, contrastThreshold=0.04, edgeThreshold=10, sigma=1.6):
+def detect_features(image_path, nfeatures=10000, nOctaveLayers=3, contrastThreshold=0.0006, edgeThreshold=20, sigma=1.6):
     """
     SIFTのパラメータ:
     - nfeatures: 検出する特徴点の最大数
@@ -126,13 +126,18 @@ def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=
     # descriptors2 = normalize_descriptors(descriptors2.astype(np.float32)) 
     descriptors1 = descriptors1.astype(np.float32)
     descriptors2 = descriptors2.astype(np.float32)
-
+    
     # BFMのインスタンスを作成
     # bf = cv2.BFMatcher(normType=normType, crossCheck=crossCheck)
-    # matches = bf.match(descriptors1, descriptors2)
+    # matches = bf.knnMatch(descriptors1, descriptors2, k=2)
     # good_matches = []
     # if distance_threshold is not None:
-    #     good_matches = [m for m in matches if m.distance < distance_threshold* max([m.distance for m in matches])]
+    #     # good_matches = [m for m in matches if m.distance < distance_threshold* max([m.distance for m in matches])]
+    #     for m, n in matches:
+    #         if m.distance < distance_threshold * n.distance:
+    #             good_matches.append(m)
+    # else :
+    #     good_matches = [m for m in matches]
     # logger.info(matches[0].distance)
     
     
@@ -145,9 +150,8 @@ def match_features(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=
     good_matches = []
     # 距離の閾値でフィルタリング
     for m, n in matches:
-    #     if m.distance < distance_threshold * n.distance:
+        if m.distance < distance_threshold * n.distance:
             good_matches.append(m)
-    # good_matches = matches
     good_matches = sorted(good_matches, key=lambda x: x.distance)
     logger.info(f"Found {len(good_matches)} good matches")
     return good_matches
@@ -225,8 +229,8 @@ def quaternion_to_rotation_matrix(q):
 # メイン処理
 def main():
     # 特徴点の記述子をデータベースから抽出し保存する
-    db_path = './Ryugu_Data/Ryugu_mask_3-1/database.db'
-    output_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/0/features.npy'
+    db_path = './Ryugu_Data/Ryugu_CLAHE/database.db'
+    # output_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/0/features.npy'
 
     # 特徴点の記述子を抽出
     pre_features, image_feature_start_indices = extract_features_from_db(db_path)
@@ -235,16 +239,16 @@ def main():
     # save_features_to_npy(features, output_file)
     
     # 既存の3Dポイントと特徴点を読み込む
-    points3d_bin_path = './Ryugu_Data/Ryugu_mask_3-1/sparse/0/points3D.bin'
+    points3d_bin_path = './Ryugu_Data/Ryugu_CLAHE/sparse/0/points3D.bin'
     pre_points3d = read_points3d_bin(points3d_bin_path)
     # pre_features = load_features_from_npy(output_file)
     
     # 既存のcameras.binとimages.binを読み込む
     # cameras = read_cameras_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/cameras.bin')
-    images = read_images_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/images.bin')
+    images = read_images_bin('./Ryugu_Data/Ryugu_CLAHE/sparse/0/images.bin')
 
     # Input2ディレクトリ内のすべての画像を処理
-    input_dir = './Ryugu_Data/Ryugu_mask_3-1/Input2hist'
+    input_dir = './Ryugu_Data/Ryugu_CLAHE/Input2tes'
     image_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.jpeg')]
 
     # 3Dプロットの準備
@@ -297,6 +301,7 @@ def main():
         image_points = []
         for m in matches:
             point3d_id = feature_id_to_point3d_id.get(m.trainIdx, None)
+            print(m.trainIdx, m.queryIdx)
             if point3d_id is not None:
                 object_points.append(pre_points3d[point3d_id]['xyz'])
                 image_points.append(keypoints[m.queryIdx].pt)
@@ -330,13 +335,13 @@ def main():
                 'point3D_ids': [int(id) for id in feature_id_to_point3d_id.values()]  # Ensure point3D_ids are integers
             }
 
-            new_images_file = './Ryugu_Data/Ryugu_mask_3-1/sparse/2/images.bin'
+            new_images_file = './Ryugu_Data/Ryugu_CLAHE/sparse/1/images.bin'
             new_images_dir = os.path.dirname(new_images_file)
 
             if os.path.exists(new_images_dir):
                 shutil.rmtree(new_images_dir)
 
-            shutil.copytree('./Ryugu_Data/Ryugu_mask_3-1/sparse/0', new_images_dir)
+            shutil.copytree('./Ryugu_Data/Ryugu_CLAHE/sparse/0', new_images_dir)
             update_images_bin(new_images_file, new_image_data)
             logger.info(f"Updated images.bin with new data for {new_image_name}")
 
@@ -361,9 +366,9 @@ def main():
             logger.warning(f"Not enough points for pose estimation in {image_file}")
 
     ax.set_box_aspect([1, 1, 1])
-    ax.set_xlim(-10, 10)
-    ax.set_ylim(-10, 10)
-    ax.set_zlim(-10, 10)
+    ax.set_xlim(-4, 4)
+    ax.set_ylim(-4, 4)
+    ax.set_zlim(-4, 4)
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')

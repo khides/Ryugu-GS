@@ -41,8 +41,8 @@ def apply_mask_and_save(input_dir, output_dir, predictor):
 
 if __name__ == "__main__":
     # 入力ディレクトリと出力ディレクトリのパス
-    input_directory = "./Ryugu_Data/Ryugu_mask_3-1/Input3"
-    output_directory = "./Ryugu_Data/Ryugu_mask_3-1/Input3"
+    input_directory = "./Ryugu_Data/Ryugu_mask_3-1/Input2test"
+    output_directory = "./Ryugu_Data/Ryugu_mask_3-1/Input2testmasked"
     
     cfg = setup_cfg()
     predictor = DefaultPredictor(cfg)

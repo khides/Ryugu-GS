@@ -48,7 +48,7 @@ def main(source_dir, reference_image_path, output_dir):
 
 if __name__ == "__main__":
     source_dir = "./Ryugu_Data/Ryugu_mask_3-1/Input2"  # 画像が保存されているディレクトリ
-    reference_image_path = "./Ryugu_Data/Ryugu_mask_3-1/images/hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"  # 参照画像のパス
+    reference_image_path = "./Ryugu_Data/Ryugu_mask_3-1/Input/hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"  # 参照画像のパス
     output_dir = "./Ryugu_Data/Ryugu_mask_3-1/Input2hist"  # 調整された画像を保存するディレクトリ
     
     main(source_dir, reference_image_path, output_dir)
