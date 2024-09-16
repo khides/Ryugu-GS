@@ -293,7 +293,7 @@ def main():
     # 既存のcameras.binとimages.binを読み込む
     # cameras = read_cameras_bin('./Ryugu_Data/Ryugu_mask_3-1/sparse/0/cameras.bin')
     images = read_images_bin('./Ryugu_Data/Ryugu_CLAHE/sparse/0/images.bin')
-
+    images_c = read_images_bin('./Ryugu_Data/Ryugu_CLAHE/sparse/c/images.bin')
     # Input2ディレクトリ内のすべての画像を処理
     image_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.jpeg')]
 
@@ -326,96 +326,120 @@ def main():
             ax.quiver(camera_position[0], camera_position[1], camera_position[2],
                       camera_direction[0], camera_direction[1], camera_direction[2],
                       length=0.5, color='r', arrow_length_ratio=0.5)
+            
+    camera_positions_c = []
+    for image_id, data in images_c.items():
+        R = quaternion_to_rotation_matrix(data['qvec'])
+        t = np.array(data['tvec']).reshape((3, 1))
+        camera_position_c = -R.T @ t
+        camera_positions_c.append(camera_position_c)
 
-    # 各画像に対してカメラポーズ推定を実行し、結果をプロット
+    camera_positions_c = np.array(camera_positions_c)
     cur = 0
-
-    descriptorsdict = extract_features_from_db2(db_path2)
-    keypointsdict = extract_keypoints_from_db(db_path2)
-    for i in range(len(image_files)):
-        image_file = image_files[i]
-        # 新しい画像の特徴点を検出
-        # keypoints, descriptors = detect_features(image_file)
-        descriptors = np.vstack(descriptorsdict[i+1])
-        keypoints = np.vstack(keypointsdict[i+1])
-
-        # 特徴点のマッチング
-        matches = match_features(descriptors, pre_features)
-
-        # 3DポイントのIDを取得して、対応する3Dポイントの座標を取得
-        feature_id_to_point3d_id = {}
-        for point3d_id, point_data in pre_points3d.items():
-            for image_id, feature_id in point_data['track']:
-                global_feature_id = image_feature_start_indices[image_id] + feature_id
-                feature_id_to_point3d_id[global_feature_id] = point3d_id
-
-        object_points = []
-        image_points = []
-        for m in matches:
-            point3d_id = feature_id_to_point3d_id.get(m.trainIdx, None)
-            if point3d_id is not None:
-                object_points.append(pre_points3d[point3d_id]['xyz'])
-                # image_points.append(keypoints[m.queryIdx].pt)
-                image_points.append(keypoints[m.queryIdx][:2])
-        object_points = np.array(object_points, dtype=np.float32)
-        image_points = np.array(image_points, dtype=np.float32)
-        logger.info(f"found {len(object_points)} object")
-
-        # 十分な対応点がある場合のみカメラポーズを推定
-        if len(object_points) >= 6:
-            # カメラの内部パラメータ
-            fx, fy, cx, cy = 9231, 9231, 512, 512
-            camera_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
-            dist_coeffs = np.zeros((4, 1))  # 歪みなしの場合
-
-            # solvePnPでカメラポーズを推定
-            _, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
-            R, _ = cv2.Rodrigues(rvec)
-
-            new_image_name = os.path.basename(image_file)
-            new_image_id = fetch_image_id(db_path, new_image_name)
-
-            if new_image_id is None:
-                new_image_id = max(images.keys()) + 1        
-
-            new_image_data = {
-                'image_id': new_image_id,
-                'camera_id': 1,
-                'name': new_image_name,
-                'qvec': quaternion_from_matrix(R),
-                'tvec': tvec.flatten().tolist(),
-                'xys': image_points.tolist(),
-                'point3D_ids': [int(id) for id in feature_id_to_point3d_id.values()]  # Ensure point3D_ids are integers
-            }
-
-            new_images_dir = os.path.dirname(new_images_file)
-
-            if os.path.exists(new_images_dir):
-                shutil.rmtree(new_images_dir)
-
-            shutil.copytree('./Ryugu_Data/Ryugu_CLAHE/sparse/0', new_images_dir)
-            update_images_bin(new_images_file, new_image_data)
-            logger.info(f"Updated images.bin with new data for {new_image_name}")
-
-            # 3Dポイントをプロット
-            ax.scatter(object_points[:, 0], object_points[:, 1], object_points[:, 2], c='gray', marker='o')
-
-            # カメラの位置をプロット
-            camera_position = -R.T @ tvec
-
-            # カメラの向きを矢印で表示
-            if (cur == 0):
-                camera_direction = R.T @ np.array([0, 0, 1])
-                ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                    camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5, label="BOX-A additional")
-                cur += 1
-            else:
-                camera_direction = R.T @ np.array([0, 0, 1])
-                ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                    camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5)
-
+    for image_id, data in images_c.items():
+        R = quaternion_to_rotation_matrix(data['qvec'])
+        t = np.array(data['tvec']).reshape((3, 1))
+        camera_position_c = -R.T @ t
+        camera_direction_c = R.T @ np.array([0, 0, 1])
+        if cur == 0:
+            ax.quiver(camera_position_c[0], camera_position_c[1], camera_position_c[2],
+                      camera_direction_c[0], camera_direction_c[1], camera_direction_c[2],
+                      length=0.5, color='b', arrow_length_ratio=0.5, label="BOX-C")
+            cur +=1
         else:
-            logger.warning(f"Not enough points for pose estimation in {image_file}")
+            ax.quiver(camera_position_c[0], camera_position_c[1], camera_position_c[2],
+                      camera_direction_c[0], camera_direction_c[1], camera_direction_c[2],
+                      length=0.5, color='b', arrow_length_ratio=0.5)
+
+    # # 各画像に対してカメラポーズ推定を実行し、結果をプロット
+    # cur = 0
+
+    # descriptorsdict = extract_features_from_db2(db_path2)
+    # keypointsdict = extract_keypoints_from_db(db_path2)
+    # for i in range(len(image_files)):
+    #     image_file = image_files[i]
+    #     # 新しい画像の特徴点を検出
+    #     # keypoints, descriptors = detect_features(image_file)
+    #     descriptors = np.vstack(descriptorsdict[i+1])
+    #     keypoints = np.vstack(keypointsdict[i+1])
+
+    #     # 特徴点のマッチング
+    #     matches = match_features(descriptors, pre_features)
+
+    #     # 3DポイントのIDを取得して、対応する3Dポイントの座標を取得
+    #     feature_id_to_point3d_id = {}
+    #     for point3d_id, point_data in pre_points3d.items():
+    #         for image_id, feature_id in point_data['track']:
+    #             global_feature_id = image_feature_start_indices[image_id] + feature_id
+    #             feature_id_to_point3d_id[global_feature_id] = point3d_id
+
+    #     object_points = []
+    #     image_points = []
+    #     for m in matches:
+    #         point3d_id = feature_id_to_point3d_id.get(m.trainIdx, None)
+    #         if point3d_id is not None:
+    #             object_points.append(pre_points3d[point3d_id]['xyz'])
+    #             # image_points.append(keypoints[m.queryIdx].pt)
+    #             image_points.append(keypoints[m.queryIdx][:2])
+    #     object_points = np.array(object_points, dtype=np.float32)
+    #     image_points = np.array(image_points, dtype=np.float32)
+    #     logger.info(f"found {len(object_points)} object")
+
+    #     # 十分な対応点がある場合のみカメラポーズを推定
+    #     if len(object_points) >= 6:
+    #         # カメラの内部パラメータ
+    #         fx, fy, cx, cy = 9231, 9231, 512, 512
+    #         camera_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
+    #         dist_coeffs = np.zeros((4, 1))  # 歪みなしの場合
+
+    #         # solvePnPでカメラポーズを推定
+    #         _, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
+    #         R, _ = cv2.Rodrigues(rvec)
+
+    #         new_image_name = os.path.basename(image_file)
+    #         new_image_id = fetch_image_id(db_path, new_image_name)
+
+    #         if new_image_id is None:
+    #             new_image_id = max(images.keys()) + 1        
+
+    #         new_image_data = {
+    #             'image_id': new_image_id,
+    #             'camera_id': 1,
+    #             'name': new_image_name,
+    #             'qvec': quaternion_from_matrix(R),
+    #             'tvec': tvec.flatten().tolist(),
+    #             'xys': image_points.tolist(),
+    #             'point3D_ids': [int(id) for id in feature_id_to_point3d_id.values()]  # Ensure point3D_ids are integers
+    #         }
+
+    #         new_images_dir = os.path.dirname(new_images_file)
+
+    #         if os.path.exists(new_images_dir):
+    #             shutil.rmtree(new_images_dir)
+
+    #         shutil.copytree('./Ryugu_Data/Ryugu_CLAHE/sparse/0', new_images_dir)
+    #         update_images_bin(new_images_file, new_image_data)
+    #         logger.info(f"Updated images.bin with new data for {new_image_name}")
+
+    #         # 3Dポイントをプロット
+    #         ax.scatter(object_points[:, 0], object_points[:, 1], object_points[:, 2], c='gray', marker='o')
+
+    #         # カメラの位置をプロット
+    #         camera_position = -R.T @ tvec
+
+    #         # カメラの向きを矢印で表示
+    #         if (cur == 0):
+    #             camera_direction = R.T @ np.array([0, 0, 1])
+    #             ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+    #                 camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5, label="BOX-A additional")
+    #             cur += 1
+    #         else:
+    #             camera_direction = R.T @ np.array([0, 0, 1])
+    #             ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+    #                 camera_direction[0], camera_direction[1], camera_direction[2], length=0.5, color='b', arrow_length_ratio=0.5)
+
+    #     else:
+    #         logger.warning(f"Not enough points for pose estimation in {image_file}")
 
     ax.set_box_aspect([1, 1, 1])
     ax.set_xlim(-4, 4)
