@@ -341,10 +341,10 @@ def main():
     base_points3d_path = './Ryugu_Data/Ryugu_CLAHE/sparse/0/points3D.bin'
     base_images_bin_path = './Ryugu_Data/Ryugu_CLAHE/sparse/0/images.bin'
     #### additional model
-    additional_db_path = './Ryugu_Data/Ryugu_CLAHE/database4.db'
-    additional_images_path = './Ryugu_Data/Ryugu_CLAHE/Input4'
-    additional_points3d_path = './Ryugu_Data/Ryugu_CLAHE/sparse/c/points3D.bin'
-    additional_images_bin_path = './Ryugu_Data/Ryugu_CLAHE/sparse/c/images.bin'
+    additional_db_path = './Ryugu_Data/Ryugu_CLAHE/database_a.db'
+    additional_images_path = './Ryugu_Data/Ryugu_CLAHE/Input2test'
+    additional_points3d_path = './Ryugu_Data/Ryugu_CLAHE/sparse/a/points3D.bin'
+    additional_images_bin_path = './Ryugu_Data/Ryugu_CLAHE/sparse/a/images.bin'
     
     ### plot
     fig = plt.figure()
@@ -380,7 +380,7 @@ def main():
 
     additional_camera_positions, additioanl_camera_directions = transform_camera_poses(additional_camera_pose[0], additional_camera_pose[1], R, t, scale)
     #### 追加モデルのカメラ位置をプロット
-    plot_camera_poses(np.array(additional_camera_positions), np.array(additioanl_camera_directions), ax, "BOX-C", 'b')    
+    plot_camera_poses(np.array(additional_camera_positions), np.array(additioanl_camera_directions), ax, "BOX-A rest", 'b')    
     
     ax.set_box_aspect([1, 1, 1])
     ax.set_xlim(-4, 4)
