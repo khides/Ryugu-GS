@@ -14,7 +14,7 @@ from typing import List, Tuple, Any
 import datetime
 
 class Log():
-    def __init__(self, filename) -> None:
+    def __init__(self, filename: str) -> None:
         logging.basicConfig(filename=filename, level=logging.DEBUG, 
                             format='%(asctime)s %(levelname)s:%(message)s', filemode='w')
     
@@ -33,7 +33,7 @@ now = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=9), 'J
 logger = Log(f"./log/{now}.log")
 
 
-def extract_descriptors_list_from_db(db_path):
+def extract_descriptors_list_from_db(db_path: str) -> Tuple[np.ndarray, dict]:
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -54,7 +54,7 @@ def extract_descriptors_list_from_db(db_path):
     # logger.info(f"Extracted feature start indices: {image_feature_start_indices}")
     return all_descriptors, image_feature_start_indices
 
-def extract_descriptors_dict_from_db(db_path):
+def extract_descriptors_dict_from_db(db_path: str) -> dict:
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -71,7 +71,7 @@ def extract_descriptors_dict_from_db(db_path):
     conn.close()
     return all_descriptors
 
-def extract_keypoints_dict_from_db(db_path):
+def extract_keypoints_dict_from_db(db_path: str) -> dict:
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
@@ -92,18 +92,18 @@ def extract_keypoints_dict_from_db(db_path):
 
 
 # 回転行列をクォータニオンに変換する関数
-def quaternion_from_matrix(matrix) -> List[Any]:
+def quaternion_from_matrix(matrix: np.ndarray) -> List[Any]:
     q = quaternion.from_rotation_matrix(matrix)
     return [q.x, q.y, q.z, q.w]
 
 # Quaternionを回転行列に変換する関数
-def quaternion_to_rotation_matrix(q) -> np.ndarray:
+def quaternion_to_rotation_matrix(q: Any) -> np.ndarray:
     q = np.quaternion(q[0], q[1], q[2], q[3])
     return quaternion.as_rotation_matrix(q)
 
 
 # バイナリファイルを読み込む関数 (images.bin)
-def read_images_bin(file_path) -> dict:
+def read_images_bin(file_path: str) -> dict:
     images = {}
     with open(file_path, "rb") as f:
         num_reg_images = struct.unpack("Q", f.read(8))[0]
@@ -163,7 +163,7 @@ def extract_camera_poses_from_images(images: dict) -> Tuple[np.ndarray, np.ndarr
     camera_directions = np.array(camera_directions)
     return camera_positions, camera_directions
 
-def read_points3d_bin(file_path):
+def read_points3d_bin(file_path: str) -> dict:
     points3d = {}
     with open(file_path, "rb") as f:
         num_points = struct.unpack("<Q", f.read(8))[0]
@@ -187,7 +187,7 @@ def read_points3d_bin(file_path):
     return points3d
 
 # 特徴点のマッチングを行う関数
-def match_descriptors(descriptors1, descriptors2, normType=cv2.NORM_L2, crossCheck=True, distance_threshold=0.8):
+def match_descriptors(descriptors1: np.ndarray, descriptors2: np.ndarray, normType:int =cv2.NORM_L2, crossCheck: bool=True, distance_threshold: float=0.8) -> List[Any]:
     """
     特徴点のマッチングのパラメータ:
     - normType: 特徴点の距離の計算に使用するノルムの種類
@@ -229,7 +229,7 @@ def match_descriptors(descriptors1, descriptors2, normType=cv2.NORM_L2, crossChe
     logger.info(f"Found {len(good_matches)} good matches")
     return good_matches
 
-def feature_id_to_points3d_id(points3d, image_feature_start_indices):
+def feature_id_to_points3d_id(points3d: dict, image_feature_start_indices: dict) -> dict:
     feature_id_to_point3d_id = {}
     for point3d_id, point_data in points3d.items():
         for image_id, feature_id in point_data['track']:
@@ -251,7 +251,7 @@ def solve_pnp(object_points, image_points, camera_matrix, dist_coeffs):
     camera_direction = R.T @ np.array([0, 0, 1])
     return camera_position, camera_direction
 
-def extract_points_from_matches(matches,base_points3d, additional_points3d,feature_id_to_points3d_id_dict, additional_feature_id_to_points3d_id_dict):
+def extract_points_from_matches(matches: List[Any],base_points3d: dict, additional_points3d:dict,feature_id_to_points3d_id_dict: dict, additional_feature_id_to_points3d_id_dict: dict) -> Tuple[np.ndarray, np.ndarray]:
     base_object_points = []
     additional_object_points = []
 
@@ -265,7 +265,7 @@ def extract_points_from_matches(matches,base_points3d, additional_points3d,featu
     additional_object_points = np.array(additional_object_points, dtype=np.float32)
     return base_object_points, additional_object_points
         
-def estimate_transformation_matrix(base_object_points, additional_object_points):
+def estimate_transformation_matrix(base_object_points: np.ndarray, additional_object_points: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
     # 対応する3D点群の数が一致していることを確認
     assert base_object_points.shape == additional_object_points.shape, "対応する3D点の数が一致していません"
     
@@ -303,7 +303,7 @@ def estimate_transformation_matrix(base_object_points, additional_object_points)
     logger.info(f"Estimated Scale: {scale}")
     return R, t, scale
 
-def transform_camera_poses(camera_positions, camera_directions, R, t, scale):
+def transform_camera_poses(camera_positions: np.ndarray, camera_directions: np.ndarray, R: np.ndarray, t: np.ndarray, scale: float) -> Tuple[np.ndarray, np.ndarray]:
     """
     カメラの位置と方向に座標変換を適用する。
     
@@ -329,7 +329,7 @@ def transform_camera_poses(camera_positions, camera_directions, R, t, scale):
     
     return transformed_positions, transformed_directions
 
-def main():
+def main() -> None:
     ### camera parameters
     fx, fy, cx, cy = 9231, 9231, 512, 512
     camera_matrix = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]], dtype=np.float32)
@@ -337,10 +337,12 @@ def main():
 
     ### source data
     #### base model
+    base_name = 'BOX-A'
     base_db_path = './Ryugu_Data/Ryugu_CLAHE/database.db'
     base_points3d_path = './Ryugu_Data/Ryugu_CLAHE/sparse/0/points3D.bin'
     base_images_bin_path = './Ryugu_Data/Ryugu_CLAHE/sparse/0/images.bin'
     #### additional model
+    additional_name = 'BOX-A rest'
     additional_db_path = './Ryugu_Data/Ryugu_CLAHE/database_a.db'
     additional_images_path = './Ryugu_Data/Ryugu_CLAHE/Input2test'
     additional_points3d_path = './Ryugu_Data/Ryugu_CLAHE/sparse/a/points3D.bin'
@@ -357,7 +359,7 @@ def main():
     feature_id_to_points3d_id_dict = feature_id_to_points3d_id(base_points3d, base_image_feature_start_indices)
     base_camera_pose= extract_camera_poses_from_images(base_images)
     #### ベースモデルのカメラ位置をプロット
-    plot_camera_poses(base_camera_pose[0], base_camera_pose[1], ax, "BOX-A", 'r')
+    plot_camera_poses(base_camera_pose[0], base_camera_pose[1], ax, base_name, 'r')
     
     ### 追加モデルの読み込み
     additional_images_bin = read_images_bin(additional_images_bin_path)
@@ -380,7 +382,7 @@ def main():
 
     additional_camera_positions, additioanl_camera_directions = transform_camera_poses(additional_camera_pose[0], additional_camera_pose[1], R, t, scale)
     #### 追加モデルのカメラ位置をプロット
-    plot_camera_poses(np.array(additional_camera_positions), np.array(additioanl_camera_directions), ax, "BOX-A rest", 'b')    
+    plot_camera_poses(np.array(additional_camera_positions), np.array(additioanl_camera_directions), ax, additional_name, 'b')    
     
     ax.set_box_aspect([1, 1, 1])
     ax.set_xlim(-4, 4)
