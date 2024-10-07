@@ -7,6 +7,8 @@ from detectron2.config import get_cfg
 from detectron2 import model_zoo
 from detectron2.utils.visualizer import Visualizer
 from detectron2.data import MetadataCatalog
+from omegaconf import OmegaConf
+from notice import send_notification
 
 # Detectron2の設定
 def setup_cfg():
@@ -40,12 +42,22 @@ def apply_mask_and_save(input_dir, output_dir, predictor):
             print(f"File {filename} has unsupported format")
 
 if __name__ == "__main__":
+    with open("config.yaml", mode="r") as f:
+        conf = OmegaConf.load(f)
     # 入力ディレクトリと出力ディレクトリのパス
-    input_directory = "./Ryugu_Data/Ryugu_mask_3-1/Input2test"
-    output_directory = "./Ryugu_Data/Ryugu_mask_3-1/Input2testmasked"
+    input_directory = conf.input_path
+    output_directory = conf.input_path
     
     cfg = setup_cfg()
     predictor = DefaultPredictor(cfg)
+    send_notification(
+        file = __file__,
+        webhook_url=conf.webhook_url,
+        method=apply_mask_and_save ,
+        input_dir = input_directory,
+        output_dir = output_directory,
+        predictor = predictor
+    )
 
-    # マスキングと保存の実行
-    apply_mask_and_save(input_directory, output_directory, predictor)
+    # # マスキングと保存の実行
+    # apply_mask_and_save(input_directory, output_directory, predictor)

@@ -22,7 +22,7 @@ class ModelMerger:
         self.train_object_points: np.ndarray = None
         self.query_object_points: np.ndarray = None
         self.logger = logger
-        self.fig : Figure= None
+        self.fig: Figure = None
         self.ax: Axes = None
         self.matches: List[Any] = None
         self.R: np.ndarray = None
@@ -32,7 +32,7 @@ class ModelMerger:
         self.query_camera_directions: np.ndarray = None
         self.merge_model: Model = None
         
-    def plot_setup(self, show_plot = True, save_plot = True) -> None:
+    def plot_setup(self, show_plot=True, save_plot=True) -> None:
         self.show_plot = show_plot
         self.save_plot = save_plot
         self.fig = plt.figure()

@@ -1,6 +1,7 @@
 import cv2
 import os
-import numpy as np
+from omegaconf import OmegaConf
+from notice import send_notification
 
 def apply_clahe(image):
     # グレースケールに変換
@@ -31,9 +32,18 @@ def process_images(input_dir, output_dir):
         cv2.imwrite(output_path, processed_image)
         print(f"{output_path} に保存しました")
 
-# ディレクトリのパスを指定
-input_directory = './Ryugu_Data/Ryugu_mask_3-1/20180720'
-output_directory = './Ryugu_Data/Ryugu_CLAHE/Input4'
-
-# 画像を処理
-process_images(input_directory, output_directory)
+if __name__ == "__main__":
+    with open("config.yaml", mode="r") as f:
+        conf = OmegaConf.load(f)
+    # ディレクトリのパスを指定
+    input_directory = conf.image_path
+    output_directory = conf.input_path
+    send_notification(
+        file = __file__,
+        webhook_url=conf.webhook_url,
+        method=process_images ,
+        input_dir = input_directory,
+        output_dir = output_directory
+        )
+    # # 画像を処理
+    # process_images(input_directory, output_directory)
