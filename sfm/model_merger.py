@@ -29,8 +29,9 @@ class ModelMerger:
         self.t: np.ndarray = None
         self.scale: float = None
         self.affine_matrix: np.ndarray = None
-        self.query_camera_positions: np.ndarray = None
-        self.query_camera_directions: np.ndarray = None
+        self.query_camera_positions_transformed: np.ndarray = None
+        self.query_camera_directions_transformed: np.ndarray = None
+        self.query_object_points_transformed: np.ndarray = None
         self.merge_model: Model = None
         
     def plot_setup(self, show_plot=True, save_plot=True) -> None:
@@ -47,7 +48,6 @@ class ModelMerger:
         - crossCheck: クロスチェックを行うかどうか
         - distance_threshold: マッチングの距離の閾値
         """
-        self.logger.info("Match Features...")
         # descriptors1 = normalize_descriptors(descriptors1.astype(np.float32))
         # descriptors2 = normalize_descriptors(descriptors2.astype(np.float32)) 
         query_descriptors = self.query_model.descriptors.astype(np.float32)
@@ -73,8 +73,11 @@ class ModelMerger:
         index_params = dict(algorithm=1, trees=50)  # 1はFLANN_INDEX_KDTREE
         search_params = dict(checks=500)  # チェックの回数
         flann = cv2.FlannBasedMatcher(index_params, search_params)
+        
+        self.logger.info("Match Features...")
         matches = flann.knnMatch(queryDescriptors=query_descriptors, trainDescriptors=train_descriptors, k=2)    
         self.logger.info(f"Found {len(matches)}  matches")
+        
         good_matches = []
         # 距離の閾値でフィルタリング
         for m, n in matches:
@@ -85,6 +88,9 @@ class ModelMerger:
         self.matches = good_matches
     
     def extract_points_from_matches(self) -> None:
+        '''
+        マッチングした特徴点から3D点を抽出する
+        '''
         train_object_points = []
         query_object_points = []
 
@@ -97,6 +103,7 @@ class ModelMerger:
                 query_object_points.append(self.query_model.points3d[query_point3d_id]['xyz'])
         train_object_points = np.array(train_object_points, dtype=np.float32)
         query_object_points = np.array(query_object_points, dtype=np.float32)
+        self.logger.info(f"Extracted {len(train_object_points)} 3D points")
         self.train_object_points = train_object_points
         self.query_object_points = query_object_points
             
@@ -140,10 +147,28 @@ class ModelMerger:
         self.t = t
         self.scale = scale
     
+    def transform_query_camera_pose(self):
+        """
+        カメラの位置と方向に座標変換を適用する。
+        """
+        # カメラ位置が (N, 3, 1) の場合、(N, 3) に変換
+        if self.query_model.camera_positions.shape[-1] == 1:
+            camera_positions = self.query_model.camera_positions.squeeze(-1)  # (N, 3)
+        else :
+            camera_positions = self.query_model.camera_positions
+            
+        # カメラ位置に回転、スケール、平行移動を適用
+        transformed_positions = self.scale * np.dot(camera_positions, self.R.T) + self.t
+        
+        # カメラ方向に回転のみを適用（方向はスケールや平行移動を適用しない）
+        transformed_directions = np.dot(self.query_model.camera_directions, self.R.T)
+        self.query_camera_positions_transformed = transformed_positions
+        self.query_camera_directions_transformed = transformed_directions
+    
     def estimate_affine_matrix_with_ransac(self, ransac_threshold: float = 3.0, confidence: float = 0.99) -> None:
         """
         RANSACを用いて2つの3D点群の座標変換（アフィン変換）を推定する
-        :param ransac_threshold: RANSACのしきい値。おおきくすると外れ値を許容しやすくなる。デフォルトは3.0 
+        :param ransac_threshold: RANSACのしきい値。大きくすると外れ値を許容しやすくなる。デフォルトは3.0 
         :param confidence: 推定に対する信頼度。デフォルトは0.99。
         """
         # 座標点が十分にあるかを確認
@@ -165,24 +190,6 @@ class ModelMerger:
         else:
             self.logger.error("RANSACによる座標変換の推定に失敗しました。")
             raise RuntimeError("RANSACによる座標変換の推定に失敗しました。")
-
-    def transform_query_camera_pose(self):
-        """
-        カメラの位置と方向に座標変換を適用する。
-        """
-        # カメラ位置が (N, 3, 1) の場合、(N, 3) に変換
-        if self.query_model.camera_positions.shape[-1] == 1:
-            camera_positions = self.query_model.camera_positions.squeeze(-1)  # (N, 3)
-        else :
-            camera_positions = self.query_model.camera_positions
-            
-        # カメラ位置に回転、スケール、平行移動を適用
-        transformed_positions = self.scale * np.dot(camera_positions, self.R.T) + self.t
-        
-        # カメラ方向に回転のみを適用（方向はスケールや平行移動を適用しない）
-        transformed_directions = np.dot(self.query_model.camera_directions, self.R.T)
-        self.query_camera_positions = transformed_positions
-        self.query_camera_directions = transformed_directions
         
     def transform_query_camera_pose_with_ransac(self):
         """
@@ -193,6 +200,11 @@ class ModelMerger:
             camera_positions = self.query_model.camera_positions.squeeze(-1)  # (N, 3)
         else :
             camera_positions = self.query_model.camera_positions
+        
+        if self.query_object_points.shape[-1] == 1:
+            query_object_points = self.query_object_points.squeeze(-1)  # (N, 3)
+        else :
+            query_object_points = self.query_object_points
             
         # アフィン変換の回転・スケーリング部分（3x3行列）と並進部分を分離
         R_affine = self.affine_matrix[:, :3]  # 回転・スケーリング行列
@@ -200,16 +212,20 @@ class ModelMerger:
 
         # カメラ位置に回転、スケール、平行移動を適用
         camera_positions_homogeneous = np.hstack((camera_positions, np.ones((camera_positions.shape[0], 1))))
-        transformed_positions = camera_positions_homogeneous @ self.affine_matrix.T
+        transformed_positions = np.dot(camera_positions_homogeneous, self.affine_matrix.T) 
         
         # カメラ方向に回転のみを適用（スケールや平行移動は適用しない）
         transformed_directions = np.dot(self.query_model.camera_directions, R_affine.T)
         transformed_directions_normalized = transformed_directions / np.linalg.norm(transformed_directions, axis=1, keepdims=True)
-
+        
+        # point3dに回転、スケール、平行移動を適用
+        query_object_points_homogeneous = np.hstack((query_object_points, np.ones((query_object_points.shape[0], 1))))
+        transformed_object_points = np.dot(query_object_points_homogeneous, self.affine_matrix.T) 
 
         # 結果を保存
-        self.query_camera_positions = transformed_positions[:, :3]  # (N, 3) の位置座標
-        self.query_camera_directions = transformed_directions_normalized       # (N, 3) の方向ベクトル
+        self.query_camera_positions_transformed = transformed_positions  # (N, 3) の位置座標
+        self.query_camera_directions_transformed = transformed_directions_normalized       # (N, 3) の方向ベクトル
+        self.query_object_points_transformed = transformed_object_points # (N, 3) の3D点群
         
     def plot_camera_poses(self, camera_positions:np.ndarray, camera_directions:np.ndarray, label: str, color: str = 'r') -> None:
         cur = 0
@@ -225,9 +241,29 @@ class ModelMerger:
                 self.ax.quiver(camera_position[0], camera_position[1], camera_position[2],
                         camera_direction[0], camera_direction[1], camera_direction[2],
                         length=0.5, color=color, arrow_length_ratio=0.5)
-    def plot(self):
+    
+    def plot_points(self, points: np.ndarray,label: str, color: str = 'r') -> None:
+        self.ax.scatter(points[:, 0], points[:, 1], points[:, 2], color=color, label=label, s=1) 
+        
+    
+    def plot(self, show_plot=True, save_plot=True) -> None:
+        self.plot_setup(show_plot=show_plot, save_plot=save_plot)
+        self.plot_points(self.train_object_points, self.train_model.name, color='r')
+        self.plot_points(self.query_object_points_transformed, self.query_model.name, color='b')
+        self.ax.set_box_aspect([1, 1, 1])
+        self.ax.set_xlim(-0.3, 0.3)
+        self.ax.set_ylim(-0.3, 0.3)
+        self.ax.set_zlim(-0.3, 0.3)
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_zlabel('Z')
+        self.ax.legend()
+        if self.show_plot:
+            plt.show()   
+            
+        self.plot_setup(show_plot=show_plot, save_plot=save_plot)         
         self.plot_camera_poses(self.train_model.camera_positions, self.train_model.camera_directions, self.train_model.name, color='r')
-        self.plot_camera_poses(self.query_camera_positions, self.query_camera_directions, self.query_model.name, color='b')
+        self.plot_camera_poses(self.query_camera_positions_transformed, self.query_camera_directions_transformed, self.query_model.name, color='b')
         self.ax.set_box_aspect([1, 1, 1])
         self.ax.set_xlim(-4, 4)
         self.ax.set_ylim(-4, 4)
@@ -243,15 +279,17 @@ class ModelMerger:
         else :plt.close()
         
     def merge(self, is_ransac = True,show_plot = True, save_plot = True):
-        self.plot_setup(show_plot=show_plot, save_plot=save_plot)
         self.match_descriptors()
         self.extract_points_from_matches()
         if is_ransac:
-            self.estimate_affine_matrix_with_ransac()
+            self.estimate_affine_matrix_with_ransac(
+                ransac_threshold=2.0,
+                confidence=0.999
+            )
             self.transform_query_camera_pose_with_ransac()
         else:
             self.estimate_transformation_matrix()
             self.transform_query_camera_pose()
-        self.plot()
+        self.plot(show_plot=show_plot, save_plot=save_plot)
         self.logger.info("Processed all images in Input")
 

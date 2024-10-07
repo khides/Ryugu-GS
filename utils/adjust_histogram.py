@@ -7,7 +7,7 @@ def apply_clahe(image):
     # グレースケールに変換
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # CLAHEを適用
-    clahe = cv2.createCLAHE(clipLimit=10.0, tileGridSize=(16, 16))
+    clahe = cv2.createCLAHE(clipLimit=20.0, tileGridSize=(16, 16))
     cl1 = clahe.apply(gray)
     return cl1
 

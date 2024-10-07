@@ -3,5 +3,11 @@
   // "editor.formatOnSave": true,
   // "python.linting.flake8Enabled": true,
   // "python.linting.enabled": true
+  "terminal.integrated.profiles.windows": {
+        "Anaconda": {
+            "path": "C:\\Windows\\System32\\cmd.exe",
+            "args": ["/K", "C:\\Users\\taiko\\anaconda3\\Scripts\\activate.bat"]
+        }
+    } 
 }
   
