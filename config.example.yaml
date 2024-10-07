@@ -1,0 +1,8 @@
+webhook_url: ""
+show_plot: false
+save_plot: true
+train_model_path: "./data_input/BOX-A"
+train_model_name: "BOX-A" 
+query_model_path: "./data_input/BOX-C"
+query_model_name: "BOX-C"
+merge_model_path: "./data_input/merged"
