@@ -45,8 +45,8 @@ if __name__ == "__main__":
     with open("config.yaml", mode="r") as f:
         conf = OmegaConf.load(f)
     # 入力ディレクトリと出力ディレクトリのパス
-    input_directory = conf.input_path
-    output_directory = conf.input_path
+    input_directory = conf.image_path
+    output_directory = conf.masked_path
     
     cfg = setup_cfg()
     predictor = DefaultPredictor(cfg)

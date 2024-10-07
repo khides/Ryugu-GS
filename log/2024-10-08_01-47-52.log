@@ -1,0 +1,5 @@
+2024-10-08 01:47:53,753 INFO:Model BOX-A is read.
+2024-10-08 01:47:56,399 INFO:Model BOX-C is read.
+2024-10-08 01:47:56,588 INFO:Match Features...
+2024-10-08 01:47:56,727 INFO:Query Descriptors: 1173755
+2024-10-08 01:47:56,728 INFO:Train Descriptors: 369256

@@ -36,7 +36,7 @@ if __name__ == "__main__":
     with open("config.yaml", mode="r") as f:
         conf = OmegaConf.load(f)
     # ディレクトリのパスを指定
-    input_directory = conf.image_path
+    input_directory = conf.masked_path
     output_directory = conf.input_path
     send_notification(
         file = __file__,

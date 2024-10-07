@@ -28,6 +28,7 @@ class ModelMerger:
         self.R: np.ndarray = None
         self.t: np.ndarray = None
         self.scale: float = None
+        self.affine_matrix: np.ndarray = None
         self.query_camera_positions: np.ndarray = None
         self.query_camera_directions: np.ndarray = None
         self.merge_model: Model = None
@@ -51,6 +52,8 @@ class ModelMerger:
         # descriptors2 = normalize_descriptors(descriptors2.astype(np.float32)) 
         query_descriptors = self.query_model.descriptors.astype(np.float32)
         train_descriptors = self.train_model.descriptors.astype(np.float32)
+        self.logger.info(f"Query Descriptors: {len(query_descriptors)}")
+        self.logger.info(f"Train Descriptors: {len(train_descriptors)}")
         
         # BFMのインスタンスを作成
         # bf = cv2.BFMatcher(normType=normType, crossCheck=crossCheck)
@@ -71,7 +74,7 @@ class ModelMerger:
         search_params = dict(checks=500)  # チェックの回数
         flann = cv2.FlannBasedMatcher(index_params, search_params)
         matches = flann.knnMatch(queryDescriptors=query_descriptors, trainDescriptors=train_descriptors, k=2)    
-        self.logger.info(f"Found {len(matches)} ")
+        self.logger.info(f"Found {len(matches)}  matches")
         good_matches = []
         # 距離の閾値でフィルタリング
         for m, n in matches:
@@ -136,21 +139,36 @@ class ModelMerger:
         self.R = R
         self.t = t
         self.scale = scale
+    
+    def estimate_affine_matrix_with_ransac(self, ransac_threshold: float = 3.0, confidence: float = 0.99) -> None:
+        """
+        RANSACを用いて2つの3D点群の座標変換（アフィン変換）を推定する
+        :param ransac_threshold: RANSACのしきい値。おおきくすると外れ値を許容しやすくなる。デフォルトは3.0 
+        :param confidence: 推定に対する信頼度。デフォルトは0.99。
+        """
+        # 座標点が十分にあるかを確認
+        if len(self.train_object_points) < 4 or len(self.query_object_points) < 4:
+            self.logger.error("少なくとも4つの対応点が必要です。")
+            raise ValueError("少なくとも4つの対応点が必要です。")
+
+        # RANSACを使ってアフィン変換を推定
+        success, transformation_matrix, inliers = cv2.estimateAffine3D(
+            src=self.query_object_points, 
+            dst=self.train_object_points,
+            ransacThreshold=ransac_threshold,
+            confidence=confidence
+            )
+
+        if success:
+            self.affine_matrix = transformation_matrix
+            self.logger.info(f"Estimated Affine Matrix: {transformation_matrix}")
+        else:
+            self.logger.error("RANSACによる座標変換の推定に失敗しました。")
+            raise RuntimeError("RANSACによる座標変換の推定に失敗しました。")
 
     def transform_query_camera_pose(self):
         """
         カメラの位置と方向に座標変換を適用する。
-        
-        Parameters:
-        camera_positions (numpy array): 複数のカメラの位置ベクトル (N, 3)
-        camera_directions (numpy array): 複数のカメラの方向ベクトル (N, 3)
-        R (numpy array): 回転行列 (3x3)
-        t (numpy array): 平行移動ベクトル (3,)
-        scale (float): スケール因子
-        
-        Returns:
-        transformed_positions (numpy array): 変換後のカメラ位置 (N, 3)
-        transformed_directions (numpy array): 変換後のカメラ方向 (N, 3)
         """
         # カメラ位置が (N, 3, 1) の場合、(N, 3) に変換
         if self.query_model.camera_positions.shape[-1] == 1:
@@ -165,6 +183,33 @@ class ModelMerger:
         transformed_directions = np.dot(self.query_model.camera_directions, self.R.T)
         self.query_camera_positions = transformed_positions
         self.query_camera_directions = transformed_directions
+        
+    def transform_query_camera_pose_with_ransac(self):
+        """
+        点群にアフィン変換を適用する
+        """
+         # カメラ位置が (N, 3, 1) の場合、(N, 3) に変換
+        if self.query_model.camera_positions.shape[-1] == 1:
+            camera_positions = self.query_model.camera_positions.squeeze(-1)  # (N, 3)
+        else :
+            camera_positions = self.query_model.camera_positions
+            
+        # アフィン変換の回転・スケーリング部分（3x3行列）と並進部分を分離
+        R_affine = self.affine_matrix[:, :3]  # 回転・スケーリング行列
+        t_affine = self.affine_matrix[:, 3]   # 並進ベクトル
+
+        # カメラ位置に回転、スケール、平行移動を適用
+        camera_positions_homogeneous = np.hstack((camera_positions, np.ones((camera_positions.shape[0], 1))))
+        transformed_positions = camera_positions_homogeneous @ self.affine_matrix.T
+        
+        # カメラ方向に回転のみを適用（スケールや平行移動は適用しない）
+        transformed_directions = np.dot(self.query_model.camera_directions, R_affine.T)
+        transformed_directions_normalized = transformed_directions / np.linalg.norm(transformed_directions, axis=1, keepdims=True)
+
+
+        # 結果を保存
+        self.query_camera_positions = transformed_positions[:, :3]  # (N, 3) の位置座標
+        self.query_camera_directions = transformed_directions_normalized       # (N, 3) の方向ベクトル
         
     def plot_camera_poses(self, camera_positions:np.ndarray, camera_directions:np.ndarray, label: str, color: str = 'r') -> None:
         cur = 0
@@ -197,12 +242,16 @@ class ModelMerger:
             plt.show()
         else :plt.close()
         
-    def merge(self, show_plot = True, save_plot = True):
+    def merge(self, is_ransac = True,show_plot = True, save_plot = True):
         self.plot_setup(show_plot=show_plot, save_plot=save_plot)
         self.match_descriptors()
         self.extract_points_from_matches()
-        self.estimate_transformation_matrix()
-        self.transform_query_camera_pose()
+        if is_ransac:
+            self.estimate_affine_matrix_with_ransac()
+            self.transform_query_camera_pose_with_ransac()
+        else:
+            self.estimate_transformation_matrix()
+            self.transform_query_camera_pose()
         self.plot()
         self.logger.info("Processed all images in Input")
 

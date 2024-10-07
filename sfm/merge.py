@@ -1,6 +1,6 @@
 from omegaconf import OmegaConf
 from sfm.model import Model
-from sfm.model_merge import ModelMerger
+from sfm.model_merger import ModelMerger
 from logger import Logger
 import datetime
 from notice import send_notification
@@ -25,7 +25,10 @@ def merge(logger: Logger, conf: OmegaConf) -> None:
         train_model=train_model,
         logger=logger
         )
-    merger.merge(show_plot=conf.show_plot, save_plot=conf.save_plot)
+    merger.merge(
+        is_ransac=conf.is_ransac,
+        show_plot=conf.show_plot, 
+        save_plot=conf.save_plot)
 
 
 
