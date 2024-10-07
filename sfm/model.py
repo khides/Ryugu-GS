@@ -6,6 +6,8 @@ import cv2
 from typing import Any, List
 import os
 from logger import Logger
+import open3d as o3d
+
 
 class Model: 
     def __init__(self, model_path: str, name: str, logger: Logger) -> None:
@@ -16,11 +18,13 @@ class Model:
         self.images_path = f"{model_path}/Input"
         self.points3d_path = f"{model_path}/sparse/0/points3D.bin"
         self.image_bin_path = f"{model_path}/sparse/0/images.bin"
+        self.pcd_ply_path = f"{model_path}/sparse/0/points3D.ply"
         self.images_bin : dict = None
         self.images : list = None
         self.points3d: dict = None
         self.keypoints: dict = None
         self.descriptors: np.ndarray = None
+        self.pcd: o3d.geometry.PointCloud = None
         self.image_feature_start_indices: dict = None
         self.feature_id_to_point3d_id: dict = None
         self.camera_positions: np.ndarray = None
@@ -151,7 +155,10 @@ class Model:
         camera_directions = np.array(camera_directions)
         self.camera_positions = camera_positions
         self.camera_directions = camera_directions
-        
+    
+    def read_pcd_from_ply(self) -> None:
+        self.pcd = o3d.io.read_point_cloud(self.pcd_ply_path)
+                
     def read_model(self):
         self.read_images_from_bin()
         self.read_images_file()
@@ -159,5 +166,6 @@ class Model:
         # self.read_camera_poses_from_images()
         self.read_keypoints_from_db()
         self.read_descriptors_from_db()
+        self.read_pcd_from_ply()
         self.get_feature_id_to_points3d_id()
         self.logger.info(f"Model {self.name} is read.")

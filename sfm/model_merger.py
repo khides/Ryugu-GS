@@ -11,6 +11,8 @@ from matplotlib.figure import Figure
 from matplotlib.axes import Axes
 from logger import Logger
 from sfm.model import Model
+import open3d as o3d
+
 
 class ModelMerger:
     def __init__(self, query_model: Model, train_model: Model, logger: Logger) -> None:
@@ -227,6 +229,23 @@ class ModelMerger:
         self.query_camera_directions_transformed = transformed_directions_normalized       # (N, 3) の方向ベクトル
         self.query_object_points_transformed = transformed_object_points # (N, 3) の3D点群
         
+    def estimate_transformation_matrix_with_icp(self, threshold: float = 0.1) -> None:
+        """
+        ICPを用いて2つの3D点群の座標変換（アフィン変換）を推定する
+        :param threshold: ICPの収束条件となる距離の閾値
+        """
+        # ICPの初期変換行列を設定
+        trans_init = np.eye(4)
+        # ICPの設定 
+        reg_p2p = o3d.pipelines.registration.registration_icp(
+            self.query_model.pcd, self.train_model.pcd, threshold,trans_init,
+            o3d.pipelines.registration.TransformationEstimationPointToPoint()
+        )
+        self.affine_matrix = reg_p2p.transformation
+        self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
+        self.query_object_points = np.asarray(self.query_model.pcd.points)
+        self.train_object_points = np.asarray(self.train_model.pcd.points)
+    
     def plot_camera_poses(self, camera_positions:np.ndarray, camera_directions:np.ndarray, label: str, color: str = 'r') -> None:
         cur = 0
         for i in range(len(camera_positions)):
@@ -249,11 +268,23 @@ class ModelMerger:
     def plot(self, show_plot=True, save_plot=True) -> None:
         self.plot_setup(show_plot=show_plot, save_plot=save_plot)
         self.plot_points(self.train_object_points, self.train_model.name, color='r')
-        self.plot_points(self.query_object_points_transformed, self.query_model.name, color='b')
         self.ax.set_box_aspect([1, 1, 1])
         self.ax.set_xlim(-0.3, 0.3)
         self.ax.set_ylim(-0.3, 0.3)
         self.ax.set_zlim(-0.3, 0.3)
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_zlabel('Z')
+        self.ax.legend()
+        if self.show_plot:
+            plt.show()   
+            
+        self.plot_setup (show_plot=show_plot, save_plot=save_plot)
+        self.plot_points(self.query_object_points_transformed, self.query_model.name, color='b')
+        self.ax.set_box_aspect([1, 1, 1])
+        self.ax.set_xlim(-3, 3)
+        self.ax.set_ylim(-3, 3)
+        self.ax.set_zlim(-3, 3)
         self.ax.set_xlabel('X')
         self.ax.set_ylabel('Y')
         self.ax.set_zlabel('Z')
@@ -278,14 +309,18 @@ class ModelMerger:
             plt.show()
         else :plt.close()
         
-    def merge(self, is_ransac = True,show_plot = True, save_plot = True):
-        self.match_descriptors()
-        self.extract_points_from_matches()
+    def merge(self, is_ransac = True, is_icp = True, show_plot = True, save_plot = True):
+        if not is_icp:            
+            self.match_descriptors()
+            self.extract_points_from_matches()
         if is_ransac:
-            self.estimate_affine_matrix_with_ransac(
-                ransac_threshold=2.0,
-                confidence=0.999
-            )
+            if is_icp :
+                self.estimate_transformation_matrix_with_icp()
+            else :
+                self.estimate_affine_matrix_with_ransac(
+                    ransac_threshold=2.0,
+                    confidence=0.999
+                )
             self.transform_query_camera_pose_with_ransac()
         else:
             self.estimate_transformation_matrix()
