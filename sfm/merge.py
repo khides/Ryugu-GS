@@ -26,7 +26,7 @@ def merge(logger: Logger, conf: OmegaConf) -> None:
         logger=logger
         )
     merger.merge(
-        is_ransac=conf.is_ransac,
+        estimate_type=conf.estimate_type,
         show_plot=conf.show_plot, 
         save_plot=conf.save_plot)
 

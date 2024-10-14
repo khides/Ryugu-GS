@@ -12,6 +12,8 @@ from matplotlib.axes import Axes
 from logger import Logger
 from sfm.model import Model
 import open3d as o3d
+from scipy.optimize import minimize
+
 
 
 class ModelMerger:
@@ -159,13 +161,23 @@ class ModelMerger:
         else :
             camera_positions = self.query_model.camera_positions
             
+        if self.query_object_points.shape[-1] == 1:
+            query_object_points = self.query_object_points.squeeze(-1)  # (N, 3)
+        else :
+            query_object_points = self.query_object_points
+
         # カメラ位置に回転、スケール、平行移動を適用
         transformed_positions = self.scale * np.dot(camera_positions, self.R.T) + self.t
         
         # カメラ方向に回転のみを適用（方向はスケールや平行移動を適用しない）
         transformed_directions = np.dot(self.query_model.camera_directions, self.R.T)
+        
+        # point3dに回転、スケール、平行移動を適用
+        query_object_points_transformed = self.scale * np.dot(query_object_points, self.R.T) + self.t
+        
         self.query_camera_positions_transformed = transformed_positions
         self.query_camera_directions_transformed = transformed_directions
+        self.query_object_points_transformed = query_object_points_transformed
     
     def estimate_affine_matrix_with_ransac(self, ransac_threshold: float = 3.0, confidence: float = 0.99) -> None:
         """
@@ -234,17 +246,78 @@ class ModelMerger:
         ICPを用いて2つの3D点群の座標変換（アフィン変換）を推定する
         :param threshold: ICPの収束条件となる距離の閾値
         """
-        # ICPの初期変換行列を設定
-        trans_init = np.eye(4)
-        # ICPの設定 
-        reg_p2p = o3d.pipelines.registration.registration_icp(
-            self.query_model.pcd, self.train_model.pcd, threshold,trans_init,
-            o3d.pipelines.registration.TransformationEstimationPointToPoint()
-        )
-        self.affine_matrix = reg_p2p.transformation
-        self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
+        # # ICPの初期変換行列を設定
+        # trans_init = np.eye(4)
+        # # ICPの設定 
+        # reg_p2p = o3d.pipelines.registration.registration_icp(
+        #     self.query_model.pcd, self.train_model.pcd, threshold,trans_init,
+        #     o3d.pipelines.registration.TransformationEstimationPointToPoint()
+        # )
+        # self.affine_matrix = reg_p2p.transformation
+        # self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
         self.query_object_points = np.asarray(self.query_model.pcd.points)
         self.train_object_points = np.asarray(self.train_model.pcd.points)
+        
+        # KDTreeを使って最近傍点を見つける関数
+        def find_nearest_neighbors(source_points, target_points):
+            target_pcd = o3d.geometry.PointCloud()
+            target_pcd.points = o3d.utility.Vector3dVector(target_points)
+            
+            # KDTreeを作成
+            target_tree = o3d.geometry.KDTreeFlann(target_pcd)
+            
+            nearest_points = []
+            for point in source_points:
+                # source_pointに最も近いtarget_pointを探す
+                [_, idx, _] = target_tree.search_knn_vector_3d(point, 1)
+                nearest_points.append(target_points[idx[0]])
+            
+            return np.array(nearest_points)
+
+        
+        # 損失関数: 双方向での対応点を見つけ、それぞれの距離を最小化する
+        def affine_icp_loss(params, source_points, target_points):
+            scale = params[0]
+            rotation_angles = params[1:4]  # 回転角度
+            translation_vector = params[4:7]  # 平行移動
+
+            # 回転行列の計算
+            rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(rotation_angles)
+
+            # スケール、回転、平行移動を適用して点群を変換
+            transformed_source = scale * (source_points @ rotation_matrix.T) + translation_vector
+
+            # 対応点（source_points → target_pointsの対応）
+            nearest_target_to_source = find_nearest_neighbors(transformed_source, target_points)
+
+            # 対応点（target_points → source_pointsの対応）
+            nearest_source_to_target = find_nearest_neighbors(target_points, transformed_source)
+
+            # 対応点間の距離の二乗和を計算（双方向の誤差）
+            loss1 = np.sum(np.linalg.norm(transformed_source - nearest_target_to_source, axis=1)**2)
+            loss2 = np.sum(np.linalg.norm(target_points - nearest_source_to_target, axis=1)**2)
+            
+            return loss1 + loss2
+        
+        # 初期パラメータ（スケール=1、回転なし、平行移動なし）
+        initial_params = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        
+        # 点群をnumpy配列に変換
+        source_points = np.asarray(self.query_model.pcd.points)
+        target_points = np.asarray(self.train_model.pcd.points)
+        
+        # 最適化 (BFGS法)
+        result = minimize(affine_icp_loss, initial_params, args=(source_points, target_points))
+        optimal_params = result.x
+        scale = optimal_params[0]
+        rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(optimal_params[1:4])
+        translation_vector = optimal_params[4:7]
+        
+        self.scale = scale
+        self.R = rotation_matrix
+        self.t = translation_vector
+
+
     
     def plot_camera_poses(self, camera_positions:np.ndarray, camera_directions:np.ndarray, label: str, color: str = 'r') -> None:
         cur = 0
@@ -309,22 +382,21 @@ class ModelMerger:
             plt.show()
         else :plt.close()
         
-    def merge(self, is_ransac = True, is_icp = True, show_plot = True, save_plot = True):
-        if not is_icp:            
+    def merge(self, estimate_type = 'icp', show_plot = True, save_plot = True):
+        if estimate_type == 'icp':
+            self.estimate_transformation_matrix_with_icp()
+            self.transform_query_camera_pose()
+        elif estimate_type == 'ransac':
             self.match_descriptors()
             self.extract_points_from_matches()
-        if is_ransac:
-            if is_icp :
-                self.estimate_transformation_matrix_with_icp()
-            else :
-                self.estimate_affine_matrix_with_ransac(
-                    ransac_threshold=2.0,
-                    confidence=0.999
-                )
+            self.estimate_affine_matrix_with_ransac()
             self.transform_query_camera_pose_with_ransac()
-        else:
+        else :
+            self.match_descriptors()
+            self.extract_points_from_matches()
             self.estimate_transformation_matrix()
             self.transform_query_camera_pose()
+            
         self.plot(show_plot=show_plot, save_plot=save_plot)
         self.logger.info("Processed all images in Input")
 
