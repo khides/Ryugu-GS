@@ -13,7 +13,7 @@ from logger import Logger
 from sfm.model import Model
 import open3d as o3d
 from scipy.optimize import minimize
-
+from pycpd import AffineRegistration
 
 
 class ModelMerger:
@@ -205,7 +205,7 @@ class ModelMerger:
             self.logger.error("RANSACによる座標変換の推定に失敗しました。")
             raise RuntimeError("RANSACによる座標変換の推定に失敗しました。")
         
-    def transform_query_camera_pose_with_ransac(self):
+    def transform_query_camera_pose_with_affine(self):
         """
         点群にアフィン変換を適用する
         """
@@ -220,26 +220,31 @@ class ModelMerger:
         else :
             query_object_points = self.query_object_points
             
-        # アフィン変換の回転・スケーリング部分（3x3行列）と並進部分を分離
-        R_affine = self.affine_matrix[:, :3]  # 回転・スケーリング行列
-        t_affine = self.affine_matrix[:, 3]   # 並進ベクトル
+        # # アフィン変換の回転・スケーリング部分（3x3行列）と並進部分を分離
+        # R_affine = self.affine_matrix[:3, :3]  # 回転・スケーリング行列
+        # t_affine = self.affine_matrix[:3, 3]   # 並進ベクトル
 
         # カメラ位置に回転、スケール、平行移動を適用
-        camera_positions_homogeneous = np.hstack((camera_positions, np.ones((camera_positions.shape[0], 1))))
-        transformed_positions = np.dot(camera_positions_homogeneous, self.affine_matrix.T) 
+        # camera_positions_homogeneous = np.hstack((camera_positions, np.ones((camera_positions.shape[0], 1))))
+        # transformed_positions = np.dot(camera_positions_homogeneous, self.affine_matrix.T) 
+        transformed_positions = np.dot(camera_positions, self.B_reg) + self.t_reg
         
         # カメラ方向に回転のみを適用（スケールや平行移動は適用しない）
-        transformed_directions = np.dot(self.query_model.camera_directions, R_affine.T)
+        # transformed_directions = np.dot(self.query_model.camera_directions, R_affine.T)
+        # transformed_directions_normalized = transformed_directions / np.linalg.norm(transformed_directions, axis=1, keepdims=True)
+        transformed_directions = np.dot(self.query_model.camera_directions, self.B_reg)
         transformed_directions_normalized = transformed_directions / np.linalg.norm(transformed_directions, axis=1, keepdims=True)
         
+        
         # point3dに回転、スケール、平行移動を適用
-        query_object_points_homogeneous = np.hstack((query_object_points, np.ones((query_object_points.shape[0], 1))))
-        transformed_object_points = np.dot(query_object_points_homogeneous, self.affine_matrix.T) 
+        # query_object_points_homogeneous = np.hstack((query_object_points, np.ones((query_object_points.shape[0], 1))))
+        # transformed_object_points = np.dot(query_object_points_homogeneous, self.affine_matrix.T) 
+        transformed_object_points = np.dot(query_object_points, self.B_reg) + self.t_reg
 
         # 結果を保存
         self.query_camera_positions_transformed = transformed_positions  # (N, 3) の位置座標
         self.query_camera_directions_transformed = transformed_directions_normalized       # (N, 3) の方向ベクトル
-        self.query_object_points_transformed = transformed_object_points # (N, 3) の3D点群
+        self.query_object_points_transformed = transformed_object_points[:,:3] # (N, 3) の3D点群
         
     def estimate_transformation_matrix_with_icp(self, threshold: float = 0.1) -> None:
         """
@@ -255,67 +260,94 @@ class ModelMerger:
         # )
         # self.affine_matrix = reg_p2p.transformation
         # self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
+
         self.query_object_points = np.asarray(self.query_model.pcd.points)
+        self.logger.info(f"Query Object Points: {self.query_object_points}")
         self.train_object_points = np.asarray(self.train_model.pcd.points)
+        # ダウンサンプリングで点群を軽量化
+        query_pcd_down = self.query_model.pcd.voxel_down_sample(voxel_size=0.004)
+        train_pcd_down = self.train_model.pcd.voxel_down_sample(voxel_size=0.004)
+        self.query_object_points_down = np.asarray(query_pcd_down.points)
+        self.train_object_points_down = np.asarray(train_pcd_down.points)
         
-        # KDTreeを使って最近傍点を見つける関数
-        def find_nearest_neighbors(source_points, target_points):
-            target_pcd = o3d.geometry.PointCloud()
-            target_pcd.points = o3d.utility.Vector3dVector(target_points)
+        # サンプリング後の点群をNumpy配列に変換
+        query = self.query_object_points_down
+        train = self.train_object_points_down
+        # CPDによるアフィン変換
+        reg = AffineRegistration(X=train, Y=query)
+        TY,(B_reg, t_reg) = reg.register()
+        self.query_object_points_down_transformed = TY
+        self.affine_matrix = np.eye(4)
+        # self.affine_matrix[:3, :3] = B_reg
+        # self.affine_matrix[:3, 3] = t_reg
+        self.B_reg = B_reg
+        self.t_reg = t_reg
+        self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
+
+
+
+        
+        # self.query_object_points = np.asarray(self.query_model.pcd.points)
+        # self.train_object_points = np.asarray(self.train_model.pcd.points)
+        
+        # # KDTreeを使って最近傍点を見つける関数
+        # def find_nearest_neighbors(source_points, target_points):
+        #     target_pcd = o3d.geometry.PointCloud()
+        #     target_pcd.points = o3d.utility.Vector3dVector(target_points)
             
-            # KDTreeを作成
-            target_tree = o3d.geometry.KDTreeFlann(target_pcd)
+        #     # KDTreeを作成
+        #     target_tree = o3d.geometry.KDTreeFlann(target_pcd)
             
-            nearest_points = []
-            for point in source_points:
-                # source_pointに最も近いtarget_pointを探す
-                [_, idx, _] = target_tree.search_knn_vector_3d(point, 1)
-                nearest_points.append(target_points[idx[0]])
+        #     nearest_points = []
+        #     for point in source_points:
+        #         # source_pointに最も近いtarget_pointを探す
+        #         [_, idx, _] = target_tree.search_knn_vector_3d(point, 1)
+        #         nearest_points.append(target_points[idx[0]])
             
-            return np.array(nearest_points)
+        #     return np.array(nearest_points)
 
         
-        # 損失関数: 双方向での対応点を見つけ、それぞれの距離を最小化する
-        def affine_icp_loss(params, source_points, target_points):
-            scale = params[0]
-            rotation_angles = params[1:4]  # 回転角度
-            translation_vector = params[4:7]  # 平行移動
+        # # 損失関数: 双方向での対応点を見つけ、それぞれの距離を最小化する
+        # def affine_icp_loss(params, source_points, target_points):
+        #     scale = params[0]
+        #     rotation_angles = params[1:4]  # 回転角度
+        #     translation_vector = params[4:7]  # 平行移動
 
-            # 回転行列の計算
-            rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(rotation_angles)
+        #     # 回転行列の計算
+        #     rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(rotation_angles)
 
-            # スケール、回転、平行移動を適用して点群を変換
-            transformed_source = scale * (source_points @ rotation_matrix.T) + translation_vector
+        #     # スケール、回転、平行移動を適用して点群を変換
+        #     transformed_source = scale * (source_points @ rotation_matrix.T) + translation_vector
 
-            # 対応点（source_points → target_pointsの対応）
-            nearest_target_to_source = find_nearest_neighbors(transformed_source, target_points)
+        #     # 対応点（source_points → target_pointsの対応）
+        #     nearest_target_to_source = find_nearest_neighbors(transformed_source, target_points)
 
-            # 対応点（target_points → source_pointsの対応）
-            nearest_source_to_target = find_nearest_neighbors(target_points, transformed_source)
+        #     # 対応点（target_points → source_pointsの対応）
+        #     nearest_source_to_target = find_nearest_neighbors(target_points, transformed_source)
 
-            # 対応点間の距離の二乗和を計算（双方向の誤差）
-            loss1 = np.sum(np.linalg.norm(transformed_source - nearest_target_to_source, axis=1)**2)
-            loss2 = np.sum(np.linalg.norm(target_points - nearest_source_to_target, axis=1)**2)
+        #     # 対応点間の距離の二乗和を計算（双方向の誤差）
+        #     loss1 = np.sum(np.linalg.norm(transformed_source - nearest_target_to_source, axis=1)**2)
+        #     loss2 = np.sum(np.linalg.norm(target_points - nearest_source_to_target, axis=1)**2)
             
-            return loss1 + loss2
+        #     return loss1 + loss2
         
-        # 初期パラメータ（スケール=1、回転なし、平行移動なし）
-        initial_params = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        # # 初期パラメータ（スケール=1、回転なし、平行移動なし）
+        # initial_params = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         
-        # 点群をnumpy配列に変換
-        source_points = np.asarray(self.query_model.pcd.points)
-        target_points = np.asarray(self.train_model.pcd.points)
+        # # 点群をnumpy配列に変換
+        # source_points = np.asarray(self.query_model.pcd.points)
+        # target_points = np.asarray(self.train_model.pcd.points)
         
-        # 最適化 (BFGS法)
-        result = minimize(affine_icp_loss, initial_params, args=(source_points, target_points))
-        optimal_params = result.x
-        scale = optimal_params[0]
-        rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(optimal_params[1:4])
-        translation_vector = optimal_params[4:7]
+        # # 最適化 (BFGS法)
+        # result = minimize(affine_icp_loss, initial_params, args=(source_points, target_points))
+        # optimal_params = result.x
+        # scale = optimal_params[0]
+        # rotation_matrix = o3d.geometry.get_rotation_matrix_from_xyz(optimal_params[1:4])
+        # translation_vector = optimal_params[4:7]
         
-        self.scale = scale
-        self.R = rotation_matrix
-        self.t = translation_vector
+        # self.scale = scale
+        # self.R = rotation_matrix
+        # self.t = translation_vector
 
 
     
@@ -338,9 +370,48 @@ class ModelMerger:
         self.ax.scatter(points[:, 0], points[:, 1], points[:, 2], color=color, label=label, s=1) 
         
     
-    def plot(self, show_plot=True, save_plot=True) -> None:
+    def plot(self, show_plot=True, save_plot=True) -> None:  
         self.plot_setup(show_plot=show_plot, save_plot=save_plot)
-        self.plot_points(self.train_object_points, self.train_model.name, color='r')
+        self.plot_points(self.train_object_points_down, self.train_model.name, color='r')  
+        self.ax.set_box_aspect([1, 1, 1])
+        self.ax.set_xlim(-0.3, 0.3)
+        self.ax.set_ylim(-0.3, 0.3)
+        self.ax.set_zlim(-0.3, 0.3)
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_zlabel('Z')
+        self.ax.legend()
+        if self.show_plot:
+            plt.show()
+                         
+        self.plot_setup(show_plot=show_plot, save_plot=save_plot)
+        self.plot_points(self.query_object_points_down_transformed, self.query_model.name, color='b')  
+        self.ax.set_box_aspect([1, 1, 1])
+        self.ax.set_xlim(-0.3, 0.3)
+        self.ax.set_ylim(-0.3, 0.3)
+        self.ax.set_zlim(-0.3, 0.3)
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_zlabel('Z')
+        self.ax.legend()
+        if self.show_plot:
+            plt.show()             
+
+        self.plot_setup(show_plot=show_plot, save_plot=save_plot)
+        self.plot_points(self.train_object_points, self.train_model.name, color='r')  
+        self.ax.set_box_aspect([1, 1, 1])
+        self.ax.set_xlim(-0.3, 0.3)
+        self.ax.set_ylim(-0.3, 0.3)
+        self.ax.set_zlim(-0.3, 0.3)
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_zlabel('Z')
+        self.ax.legend()
+        if self.show_plot:
+            plt.show()    
+                     
+        self.plot_setup (show_plot=show_plot, save_plot=save_plot)
+        self.plot_points(self.query_object_points_transformed, self.query_model.name, color='b')
         self.ax.set_box_aspect([1, 1, 1])
         self.ax.set_xlim(-0.3, 0.3)
         self.ax.set_ylim(-0.3, 0.3)
@@ -352,21 +423,9 @@ class ModelMerger:
         if self.show_plot:
             plt.show()   
             
-        self.plot_setup (show_plot=show_plot, save_plot=save_plot)
-        self.plot_points(self.query_object_points_transformed, self.query_model.name, color='b')
-        self.ax.set_box_aspect([1, 1, 1])
-        self.ax.set_xlim(-3, 3)
-        self.ax.set_ylim(-3, 3)
-        self.ax.set_zlim(-3, 3)
-        self.ax.set_xlabel('X')
-        self.ax.set_ylabel('Y')
-        self.ax.set_zlabel('Z')
-        self.ax.legend()
-        if self.show_plot:
-            plt.show()   
-            
         self.plot_setup(show_plot=show_plot, save_plot=save_plot)         
         self.plot_camera_poses(self.train_model.camera_positions, self.train_model.camera_directions, self.train_model.name, color='r')
+        # self.plot_camera_poses(self.query_model.camera_positions, self.query_model.camera_directions, self.query_model.name, color='g')
         self.plot_camera_poses(self.query_camera_positions_transformed, self.query_camera_directions_transformed, self.query_model.name, color='b')
         self.ax.set_box_aspect([1, 1, 1])
         self.ax.set_xlim(-4, 4)
@@ -385,12 +444,13 @@ class ModelMerger:
     def merge(self, estimate_type = 'icp', show_plot = True, save_plot = True):
         if estimate_type == 'icp':
             self.estimate_transformation_matrix_with_icp()
-            self.transform_query_camera_pose()
+            # self.transform_query_camera_pose()
+            self.transform_query_camera_pose_with_affine()
         elif estimate_type == 'ransac':
             self.match_descriptors()
             self.extract_points_from_matches()
             self.estimate_affine_matrix_with_ransac()
-            self.transform_query_camera_pose_with_ransac()
+            self.transform_query_camera_pose_with_affine()
         else :
             self.match_descriptors()
             self.extract_points_from_matches()
