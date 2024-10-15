@@ -31,10 +31,21 @@ class Model:
         self.camera_directions: np.ndarray = None
 
     def quaternion_to_rotation_matrix(self, q: Any) -> np.ndarray:
+        """
+        クォータ二オンを回転行列に変換する\\
+        params:
+        - q: クォータニオン
+        
+        returns:
+        - R: 回転行列
+        """
         q = np.quaternion(q[0], q[1], q[2], q[3])
         return quaternion.as_rotation_matrix(q)
 
     def read_images_from_bin(self) -> None:
+        """
+        images.binファイルを読み込む
+        """
         images = {}
         with open(self.image_bin_path, "rb") as f:
             num_reg_images = struct.unpack("Q", f.read(8))[0]
@@ -67,9 +78,15 @@ class Model:
         self.read_camera_poses_from_images()
     
     def read_images_file(self) -> None:
+        """
+        Inputフォルダ内のjpegファイルを読み込む
+        """
         self.images = [os.path.join(self.images_path, f) for f in os.listdir(self.images_path) if f.endswith('.jpeg')]
         
     def read_points3d_from_bin(self) -> None:
+        """
+        points3D.binファイルを読み込む
+        """
         points3d = {}
         with open(self.points3d_path, "rb") as f:
             num_points = struct.unpack("<Q", f.read(8))[0]
@@ -93,6 +110,9 @@ class Model:
         self.points3d = points3d 
 
     def read_keypoints_from_db(self) -> None:
+        """
+        database.dbからkeypointsを読み込む
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -112,6 +132,9 @@ class Model:
         self.keypoints = all_keypoints
 
     def read_descriptors_from_db(self) -> None:
+        """
+        database.dbからdescriptorsを読み込む
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -134,6 +157,9 @@ class Model:
         self.image_feature_start_indices = image_feature_start_indices
                             
     def get_feature_id_to_points3d_id(self) -> None:
+        """
+        feature_idからpoint3d_idを取得する
+        """
         feature_id_to_point3d_id = {}
         for point3d_id, point_data in self.points3d.items():
             for image_id, feature_id in point_data['track']:
@@ -142,6 +168,9 @@ class Model:
         self.feature_id_to_point3d_id = feature_id_to_point3d_id
     
     def read_camera_poses_from_images(self)-> None: 
+        """
+        images.binからカメラの位置と向きを取得する
+        """
         camera_positions = []
         camera_directions = []
         for image_id, data in self.images_bin.items():
@@ -157,9 +186,15 @@ class Model:
         self.camera_directions = camera_directions
     
     def read_pcd_from_ply(self) -> None:
+        """
+        points3D.plyファイルを読み込む
+        """
         self.pcd = o3d.io.read_point_cloud(self.pcd_ply_path)
                 
     def read_model(self):
+        """
+        モデルを読み込む
+        """
         self.read_images_from_bin()
         self.read_images_file()
         self.read_points3d_from_bin()

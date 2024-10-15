@@ -43,17 +43,22 @@ class ModelMerger:
         self.train_object_points_down: np.ndarray = None
         self.query_object_points_down_transformed: np.ndarray = None
         
-        
     def plot_setup(self, show_plot=True, save_plot=True) -> None:
+        """
+        プロットの設定を行う関数\\
+        params:
+        - show_plot: プロットを表示するかどうか
+        - save_plot: プロットを保存するかどうか
+        """
         self.show_plot = show_plot
         self.save_plot = save_plot
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111, projection='3d')
 
-    # 特徴点のマッチングを行う関数
     def match_descriptors(self, normType:int =cv2.NORM_L2, crossCheck: bool=True, distance_threshold: float=0.8) ->None:
         """
-        特徴点のマッチングのパラメータ:
+        特徴点のマッチングを行う関数 \\
+        params:
         - normType: 特徴点の距離の計算に使用するノルムの種類
         - crossCheck: クロスチェックを行うかどうか
         - distance_threshold: マッチングの距離の閾値
@@ -187,9 +192,10 @@ class ModelMerger:
     
     def estimate_affine_matrix_with_ransac(self, ransac_threshold: float = 3.0, confidence: float = 0.99) -> None:
         """
-        RANSACを用いて2つの3D点群の座標変換（アフィン変換）を推定する
-        :param ransac_threshold: RANSACのしきい値。大きくすると外れ値を許容しやすくなる。デフォルトは3.0 
-        :param confidence: 推定に対する信頼度。デフォルトは0.99。
+        RANSACを用いて2つの3D点群の座標変換（アフィン変換）を推定する \\
+        :params
+        - ransac_threshold: RANSACのしきい値。大きくすると外れ値を許容しやすくなる。デフォルトは3.0 
+        - confidence: 推定に対する信頼度。デフォルトは0.99。
         """
         # 座標点が十分にあるかを確認
         if len(self.train_object_points) < 4 or len(self.query_object_points) < 4:
@@ -254,8 +260,9 @@ class ModelMerger:
         
     def estimate_transformation_matrix_with_icp(self, threshold: float = 0.1) -> None:
         """
-        ICPを用いて2つの3D点群の座標変換（アフィン変換）を推定する
-        :param threshold: ICPの収束条件となる距離の閾値
+        ICPを用いて2つの3D点群の座標変換（アフィン変換）を推定する \\
+        params: 
+        - threshold: ICPの収束条件となる距離の閾値
         """
         # ICPの初期変換行列を設定
         trans_init = np.eye(4)
@@ -331,8 +338,9 @@ class ModelMerger:
         
     def estimate_transformation_matrix_with_cpd(self, threshold: float = 0.1) -> None:
         """
-        CPDを用いて2つの3D点群の座標変換（アフィン変換）を推定する
-        :param threshold: CPDの収束条件となる距離の閾値
+        CPDを用いて2つの3D点群の座標変換（アフィン変換）を推定する\\
+        params:
+        - threshold: CPDの収束条件となる距離の閾値
         """
         self.query_object_points = np.asarray(self.query_model.pcd.points)
         self.logger.info(f"Query Object Points: {self.query_object_points}")
@@ -357,8 +365,15 @@ class ModelMerger:
         self.t_reg = t_reg
         self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
 
-    
     def plot_camera_poses(self, camera_positions:np.ndarray, camera_directions:np.ndarray, label: str, color: str = 'r') -> None:
+        """
+        カメラの位置と方向をプロットする\\
+        params:
+        - camera_positions: カメラの位置のリスト
+        - camera_directions: カメラの方向のリスト
+        - label: ラベル
+        - color: 色
+        """
         cur = 0
         for i in range(len(camera_positions)):
             camera_position = camera_positions[i]
@@ -374,10 +389,22 @@ class ModelMerger:
                         length=0.5, color=color, arrow_length_ratio=0.5)
     
     def plot_points(self, points: np.ndarray,label: str, color: str = 'r') -> None:
+        """
+        3D点群をプロットする\\
+        params:
+        - points: 3D点群
+        - label: ラベル
+        - color: 色
+        """
         self.ax.scatter(points[:, 0], points[:, 1], points[:, 2], color=color, label=label, s=1) 
         
-    
     def plot(self, show_plot=True, save_plot=True) -> None:  
+        """
+        3D点群とカメラ位置をプロットする\\
+        params:
+        - show_plot: プロットを表示するかどうか
+        - save_plot: プロットを保存するかどうか
+        """
         self.plot_setup(show_plot=show_plot, save_plot=save_plot)
         self.plot_points(self.train_object_points_down, self.train_model.name, color='r')  
         self.ax.set_box_aspect([1, 1, 1])
@@ -449,6 +476,13 @@ class ModelMerger:
         else :plt.close()
         
     def merge(self, estimate_type = 'icp', show_plot = True, save_plot = True):
+        """
+        2つのモデルをマージする\\
+        params:
+        - estimate_type: 3D点群の座標変換を推定する手法
+        - show_plot: プロットを表示するかどうか
+        - save_plot: プロットを保存するかどうか
+        """
         if estimate_type == 'icp':
             self.estimate_transformation_matrix_with_icp()
             # self.transform_query_camera_pose()

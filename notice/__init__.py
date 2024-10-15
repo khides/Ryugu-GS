@@ -7,6 +7,12 @@ import sys
 from typing import Callable, Any
 
 def post_message(message: str, webhook_url: str ):
+    """
+    Slackにメッセージを送信する
+    params:
+    - message: 送信するメッセージ
+    - webhook_url: SlackのWebhook URL
+    """
     
     payload = {
         "text": message
@@ -22,6 +28,15 @@ def post_message(message: str, webhook_url: str ):
         
         
 def send_notification(file: str,webhook_url: str, method: Callable[..., Any], *args, **kwargs):
+    """
+    メソッドの実行結果をSlackに通知する
+    params:
+    - file: 実行ファイルのパス
+    - webhook_url: SlackのWebhook URL
+    - method: 実行するメソッド
+    - *args: methodの引数
+    - **kwargs: methodのキーワード引数
+    """
     try:
         start = time.time()
         method(*args, **kwargs)
