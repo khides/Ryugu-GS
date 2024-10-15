@@ -8,7 +8,7 @@ from typing import Callable, Any
 
 def post_message(message: str, webhook_url: str ):
     """
-    Slackにメッセージを送信する
+    Slackにメッセージを送信する\\
     params:
     - message: 送信するメッセージ
     - webhook_url: SlackのWebhook URL
@@ -29,7 +29,7 @@ def post_message(message: str, webhook_url: str ):
         
 def send_notification(file: str,webhook_url: str, method: Callable[..., Any], *args, **kwargs):
     """
-    メソッドの実行結果をSlackに通知する
+    メソッドの実行結果をSlackに通知する\\
     params:
     - file: 実行ファイルのパス
     - webhook_url: SlackのWebhook URL
