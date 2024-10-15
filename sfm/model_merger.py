@@ -37,6 +37,12 @@ class ModelMerger:
         self.query_camera_directions_transformed: np.ndarray = None
         self.query_object_points_transformed: np.ndarray = None
         self.merge_model: Model = None
+        self.B_reg: np.ndarray = None
+        self.t_reg: np.ndarray = None
+        self.query_object_points_down: np.ndarray = None
+        self.train_object_points_down: np.ndarray = None
+        self.query_object_points_down_transformed: np.ndarray = None
+        
         
     def plot_setup(self, show_plot=True, save_plot=True) -> None:
         self.show_plot = show_plot
@@ -251,42 +257,16 @@ class ModelMerger:
         ICPを用いて2つの3D点群の座標変換（アフィン変換）を推定する
         :param threshold: ICPの収束条件となる距離の閾値
         """
-        # # ICPの初期変換行列を設定
-        # trans_init = np.eye(4)
-        # # ICPの設定 
-        # reg_p2p = o3d.pipelines.registration.registration_icp(
-        #     self.query_model.pcd, self.train_model.pcd, threshold,trans_init,
-        #     o3d.pipelines.registration.TransformationEstimationPointToPoint()
-        # )
-        # self.affine_matrix = reg_p2p.transformation
-        # self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
-
-        self.query_object_points = np.asarray(self.query_model.pcd.points)
-        self.logger.info(f"Query Object Points: {self.query_object_points}")
-        self.train_object_points = np.asarray(self.train_model.pcd.points)
-        # ダウンサンプリングで点群を軽量化
-        query_pcd_down = self.query_model.pcd.voxel_down_sample(voxel_size=0.004)
-        train_pcd_down = self.train_model.pcd.voxel_down_sample(voxel_size=0.004)
-        self.query_object_points_down = np.asarray(query_pcd_down.points)
-        self.train_object_points_down = np.asarray(train_pcd_down.points)
-        
-        # サンプリング後の点群をNumpy配列に変換
-        query = self.query_object_points_down
-        train = self.train_object_points_down
-        # CPDによるアフィン変換
-        reg = AffineRegistration(X=train, Y=query)
-        TY,(B_reg, t_reg) = reg.register()
-        self.query_object_points_down_transformed = TY
-        self.affine_matrix = np.eye(4)
-        # self.affine_matrix[:3, :3] = B_reg
-        # self.affine_matrix[:3, 3] = t_reg
-        self.B_reg = B_reg
-        self.t_reg = t_reg
+        # ICPの初期変換行列を設定
+        trans_init = np.eye(4)
+        # ICPの設定 
+        reg_p2p = o3d.pipelines.registration.registration_icp(
+            self.query_model.pcd, self.train_model.pcd, threshold,trans_init,
+            o3d.pipelines.registration.TransformationEstimationPointToPoint()
+        )
+        self.affine_matrix = reg_p2p.transformation
         self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
 
-
-
-        
         # self.query_object_points = np.asarray(self.query_model.pcd.points)
         # self.train_object_points = np.asarray(self.train_model.pcd.points)
         
@@ -348,7 +328,34 @@ class ModelMerger:
         # self.scale = scale
         # self.R = rotation_matrix
         # self.t = translation_vector
-
+        
+    def estimate_transformation_matrix_with_cpd(self, threshold: float = 0.1) -> None:
+        """
+        CPDを用いて2つの3D点群の座標変換（アフィン変換）を推定する
+        :param threshold: CPDの収束条件となる距離の閾値
+        """
+        self.query_object_points = np.asarray(self.query_model.pcd.points)
+        self.logger.info(f"Query Object Points: {self.query_object_points}")
+        self.train_object_points = np.asarray(self.train_model.pcd.points)
+        # ダウンサンプリングで点群を軽量化
+        query_pcd_down = self.query_model.pcd.voxel_down_sample(voxel_size=0.01)
+        train_pcd_down = self.train_model.pcd.voxel_down_sample(voxel_size=0.01)
+        self.query_object_points_down = np.asarray(query_pcd_down.points)
+        self.train_object_points_down = np.asarray(train_pcd_down.points)
+        
+        # サンプリング後の点群をNumpy配列に変換
+        query = self.query_object_points_down
+        train = self.train_object_points_down
+        # CPDによるアフィン変換
+        reg = AffineRegistration(X=train, Y=query)
+        TY,(B_reg, t_reg) = reg.register()
+        self.query_object_points_down_transformed = TY
+        self.affine_matrix = np.eye(4)
+        # self.affine_matrix[:3, :3] = B_reg
+        # self.affine_matrix[:3, 3] = t_reg
+        self.B_reg = B_reg
+        self.t_reg = t_reg
+        self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
 
     
     def plot_camera_poses(self, camera_positions:np.ndarray, camera_directions:np.ndarray, label: str, color: str = 'r') -> None:
@@ -445,6 +452,9 @@ class ModelMerger:
         if estimate_type == 'icp':
             self.estimate_transformation_matrix_with_icp()
             # self.transform_query_camera_pose()
+            self.transform_query_camera_pose_with_affine()
+        elif estimate_type == 'cpd':
+            self.estimate_transformation_matrix_with_cpd()
             self.transform_query_camera_pose_with_affine()
         elif estimate_type == 'ransac':
             self.match_descriptors()
