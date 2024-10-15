@@ -6,6 +6,8 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ..:/home/developer/Ryugu-GS
+      - ~/.ssh:/home/developer/.ssh
+      - ~/.gitconfig:/home/developer/.gitconfig
     environment:
       - TZ=Asia/Tokyo
       - LANG=ja_JP.UTF-8

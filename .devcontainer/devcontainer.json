@@ -1,8 +1,9 @@
-{    
+{
     "name": "Ryugu-GS Dev Container",
     "dockerComposeFile": "docker-compose.yml",
     "service": "ryugu-gs",
     "workspaceFolder": "/home/developer/Ryugu-GS",
+    "initializeCommand": "git config --add safe.directory /home/developer/Ryugu-GS",
     "postCreateCommand": "docker-compose exec ryugu-gs /bin/bash",
     "customizations": {
         "vscode": {
@@ -15,6 +16,7 @@
                 "ms-python.python",
                 "njpwerner.autodocstring",
                 "oderwat.indent-rainbow",
+                "mhutchie.git-graph",
                 "pkief.material-icon-theme",
                 "shardulm94.trailing-spaces",
                 "usernamehw.errorlens",
@@ -54,7 +56,6 @@
                 "python.defaultInterpreterPath": "/opt/rye/shims/python"
             },
             "remoteUser": "developer"
-
         }
     }
 }

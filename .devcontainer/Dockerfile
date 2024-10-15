@@ -4,7 +4,7 @@ FROM nvcr.io/nvidia/cuda:11.8.0-devel-ubuntu20.04
 # 必要なパッケージのインストール
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get upgrade -y
-RUN apt-get install -y software-properties-common tzdata wget ninja-build
+RUN apt-get install -y software-properties-common tzdata wget ninja-build git
 ENV TZ=Asia/Tokyo
 RUN apt-get update && apt-get install -y language-pack-ja && \
     update-locale LANG=ja_JP.UTF-8 && rm -rf /var/lib/apt/lists/*
@@ -45,7 +45,7 @@ RUN wget https://repo.anaconda.com/archive/Anaconda3-2024.02-1-Linux-x86_64.sh -
 # 環境ファイルからConda環境の作成
 RUN . ~/conda/etc/profile.d/conda.sh
 #  && \
-    # conda env create -f /home/developer/Ryugu-GS/3D-gaussian-splatting/gaussian-splatting/environment.yml
+# conda env create -f /home/developer/Ryugu-GS/3D-gaussian-splatting/gaussian-splatting/environment.yml
 
 # 作成した環境をアクティブにする
 # SHELL ["conda", "run", "-n", "gaussian_splatting", "/bin/bash", "-c"]
