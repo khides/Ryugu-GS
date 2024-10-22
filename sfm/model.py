@@ -27,6 +27,7 @@ class Model:
         self.pcd: o3d.geometry.PointCloud = None
         self.image_feature_start_indices: dict = None
         self.feature_id_to_point3d_id: dict = None
+        self.camera_pose: dict = {}
         self.camera_positions: np.ndarray = None
         self.camera_directions: np.ndarray = None
 
@@ -178,8 +179,13 @@ class Model:
             t = np.array(data['tvec']).reshape((3, 1))
             camera_position = -R.T @ t
             camera_direction = R.T @ np.array([0, 0, 1])
+            self.camera_pose.setdefault(data['name'], {
+                "position": camera_position,
+                "direction": camera_direction
+            })
             camera_positions.append(camera_position)
             camera_directions.append(camera_direction)
+        
         camera_positions = np.array(camera_positions)
         camera_directions = np.array(camera_directions)
         self.camera_positions = camera_positions

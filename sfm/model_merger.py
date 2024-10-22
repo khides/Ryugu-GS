@@ -14,6 +14,8 @@ from sfm.model import Model
 import open3d as o3d
 from scipy.optimize import minimize
 from pycpd import AffineRegistration
+from scipy.spatial.transform import Rotation as R
+
 
 
 class ModelMerger:
@@ -231,7 +233,10 @@ class ModelMerger:
             query_object_points = self.query_object_points.squeeze(-1)  # (N, 3)
         else :
             query_object_points = self.query_object_points
-            
+        
+        camera_positions = np.dot(camera_positions, self.R_init.T) + self.t_init  
+        camera_directions = np.dot(self.query_model.camera_directions, self.R_init.T)
+        query_object_points = np.dot(query_object_points, self.R_init.T) + self.t_init
         # # アフィン変換の回転・スケーリング部分（3x3行列）と並進部分を分離
         # R_affine = self.affine_matrix[:3, :3]  # 回転・スケーリング行列
         # t_affine = self.affine_matrix[:3, 3]   # 並進ベクトル
@@ -244,7 +249,7 @@ class ModelMerger:
         # カメラ方向に回転のみを適用（スケールや平行移動は適用しない）
         # transformed_directions = np.dot(self.query_model.camera_directions, R_affine.T)
         # transformed_directions_normalized = transformed_directions / np.linalg.norm(transformed_directions, axis=1, keepdims=True)
-        transformed_directions = np.dot(self.query_model.camera_directions, self.B_reg)
+        transformed_directions = np.dot(camera_directions, self.B_reg)
         transformed_directions_normalized = transformed_directions / np.linalg.norm(transformed_directions, axis=1, keepdims=True)
         
         
@@ -345,11 +350,15 @@ class ModelMerger:
         self.query_object_points = np.asarray(self.query_model.pcd.points)
         self.logger.info(f"Query Object Points: {self.query_object_points}")
         self.train_object_points = np.asarray(self.train_model.pcd.points)
+        
         # ダウンサンプリングで点群を軽量化
         query_pcd_down = self.query_model.pcd.voxel_down_sample(voxel_size=0.01)
         train_pcd_down = self.train_model.pcd.voxel_down_sample(voxel_size=0.01)
         self.query_object_points_down = np.asarray(query_pcd_down.points)
         self.train_object_points_down = np.asarray(train_pcd_down.points)
+        
+        # 
+        self.query_object_points_down = np.dot(self.query_object_points_down, self.R_init.T) + self.t_init
         
         # サンプリング後の点群をNumpy配列に変換
         query = self.query_object_points_down
@@ -363,7 +372,9 @@ class ModelMerger:
         # self.affine_matrix[:3, 3] = t_reg
         self.B_reg = B_reg
         self.t_reg = t_reg
-        self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
+        # self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
+        self.logger.info(f"Estimated B: {B_reg}")
+        self.logger.info(f"Estimated t: {t_reg}")
 
     def plot_camera_poses(self, camera_positions:np.ndarray, camera_directions:np.ndarray, label: str, color: str = 'r') -> None:
         """
@@ -483,6 +494,140 @@ class ModelMerger:
         - show_plot: プロットを表示するかどうか
         - save_plot: プロットを保存するかどうか
         """
+        self.plot_setup(show_plot=show_plot, save_plot=save_plot)         
+        self.plot_camera_poses(self.train_model.camera_positions, self.train_model.camera_directions, self.train_model.name, color='r')
+        # self.plot_camera_poses(self.query_model.camera_positions, self.query_model.camera_directions, self.query_model.name, color='g')
+        self.plot_camera_poses(self.query_model.camera_positions, self.query_model.camera_directions, self.query_model.name, color='b')
+        self.ax.set_box_aspect([1, 1, 1])
+        self.ax.set_xlim(-4, 4)
+        self.ax.set_ylim(-4, 4)
+        self.ax.set_zlim(-4, 4)
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_zlabel('Z')
+        self.ax.legend()
+        if self.show_plot:
+            plt.show()
+        
+        
+        query_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180710_060852_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180710_063500_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180710_064956_tvf_l2a.fit.jpeg"]["position"].squeeze()])
+        train_positions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_063116_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_064612_tvf_l2a.fit.jpeg"]["position"].squeeze()])
+        query_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180710_060852_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180710_063500_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180710_064956_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
+        train_directions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_063116_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_064612_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
+        self.logger.info(f"Query Camera Positions: {query_positions}")
+        self.logger.info(f"Train Camera Positions: {train_positions}")
+        self.plot_setup(show_plot=show_plot, save_plot=save_plot)
+        self.plot_camera_poses(
+            camera_positions= train_positions,
+            camera_directions = train_directions, 
+            label=self.train_model.name, 
+            color='r')
+        self.plot_camera_poses(
+            camera_positions= query_positions,
+            camera_directions=query_directions, 
+            label=self.query_model.name, 
+            color='b')
+        self.ax.set_box_aspect([1, 1, 1])
+        self.ax.set_xlim(-3, 3)
+        self.ax.set_ylim(-3, 3)
+        self.ax.set_zlim(-3, 3)
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_zlabel('Z')
+        self.ax.legend()
+        if self.show_plot:
+            plt.show()
+            
+         # 各点群の重心を計算
+        train_centroid = np.mean(train_positions, axis=0)
+        query_centroid = np.mean(query_positions, axis=0)
+
+        # 重心を基準に各点群を中心に揃える
+        train_centered = train_positions - train_centroid
+        query_centered = query_positions - query_centroid
+
+        # 各点群の距離の二乗和を計算してスケールを推定
+        train_scale = np.sqrt(np.sum(train_centered ** 2))
+        query_scale = np.sqrt(np.sum(query_centered ** 2))
+        scale = train_scale / query_scale  # スケールの計算を逆にする
+
+        # スケールを反映した点群を作成
+        query_centered_scaled = query_centered * scale
+
+        # 回転行列をSVDで推定
+        H = np.dot(query_centered_scaled.T, train_centered)
+        U, S, Vt = np.linalg.svd(H)
+        R = np.dot(Vt.T, U.T)
+
+        # 回転行列の行列式が負の場合、反転行列を修正
+        if np.linalg.det(R) < 0:
+            Vt[-1, :] *= -1
+            R = np.dot(Vt.T, U.T)
+        self.R_init = R
+
+        # 平行移動ベクトルを計算
+        t = train_centroid.T - np.dot(R, query_centroid.T * scale)
+        self.t_init = t
+
+        self.logger.info(f"Estimated Rotation Matrix: {R}")
+        self.logger.info(f"Estimated Translation Matrix: {t}")
+        self.logger.info(f"Estimated Scale: {scale}")
+        
+        transformed_query_positions = np.dot(query_positions, R.T) + t
+        trainformed_query_directions = np.dot(query_directions, R.T)
+        
+        self.plot_setup(show_plot=show_plot, save_plot=save_plot)
+        self.plot_camera_poses(
+            camera_positions= train_positions,
+            camera_directions=train_directions, 
+            label=self.train_model.name, 
+            color='r')
+        self.plot_camera_poses(
+            camera_positions= transformed_query_positions,
+            camera_directions=trainformed_query_directions, 
+            label=self.query_model.name, 
+            color='b')
+        self.ax.set_box_aspect([1, 1, 1])
+        self.ax.set_xlim(-3, 3)
+        self.ax.set_ylim(-3, 3)
+        self.ax.set_zlim(-3, 3)
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_zlabel('Z')
+        self.ax.legend()
+        if self.show_plot:
+            plt.show()
+        
+        if self.query_model.camera_positions.shape[-1] == 1:
+            camera_positions = self.query_model.camera_positions.squeeze(-1)  # (N, 3)
+        else :
+            camera_positions = self.query_model.camera_positions
+        
+        camera_positions_init = np.dot(camera_positions, self.R_init.T) + self.t_init  
+        camera_directions_init = np.dot(self.query_model.camera_directions, self.R_init.T)
+        self.plot_setup(show_plot=show_plot, save_plot=save_plot)         
+        self.plot_camera_poses(self.train_model.camera_positions, self.train_model.camera_directions, self.train_model.name, color='r')
+        # self.plot_camera_poses(self.query_model.camera_positions, self.query_model.camera_directions, self.query_model.name, color='g')
+        self.plot_camera_poses(camera_positions_init, camera_directions_init, self.query_model.name, color='b')
+        self.ax.set_box_aspect([1, 1, 1])
+        self.ax.set_xlim(-4, 4)
+        self.ax.set_ylim(-4, 4)
+        self.ax.set_zlim(-4, 4)
+        self.ax.set_xlabel('X')
+        self.ax.set_ylabel('Y')
+        self.ax.set_zlabel('Z')
+        self.ax.legend()
+        if self.show_plot:
+            plt.show()
+        
         if estimate_type == 'icp':
             self.estimate_transformation_matrix_with_icp()
             # self.transform_query_camera_pose()
