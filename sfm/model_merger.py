@@ -262,7 +262,6 @@ class ModelMerger:
         transformed_directions = np.dot(camera_directions, self.B_reg)
         transformed_directions_normalized = transformed_directions / np.linalg.norm(transformed_directions, axis=1, keepdims=True)
         
-        
         # point3dに回転、スケール、平行移動を適用
         # query_object_points_homogeneous = np.hstack((query_object_points, np.ones((query_object_points.shape[0], 1))))
         # transformed_object_points = np.dot(query_object_points_homogeneous, self.affine_matrix.T) 
@@ -504,7 +503,7 @@ class ModelMerger:
         if save_plot:
             plt.savefig(f"./plot/{self.now}.{title.replace(' ', '_')}.jpg")
     
-    def plot_poses(self, camera_positions_list:np.ndarray, camera_directions_list:np.ndarray, label_list: List[str], color_list: List[str], title: str, show_plot: bool, save_plot: bool, scale = 4) -> None:
+    def plot_poses(self, camera_positions_list:List[np.ndarray], camera_directions_list:List[np.ndarray], label_list: List[str], color_list: List[str], title: str, show_plot: bool, save_plot: bool, scale = 4) -> None:
         
         def plot_camera_poses(camera_positions:np.ndarray, camera_directions:np.ndarray, label: str, color: str = 'r') -> None:
             """
@@ -549,7 +548,6 @@ class ModelMerger:
         if show_plot:
             plt.show()   
 
-    
     def merge(self, estimate_type, show_plot = True, save_plot = True):
         """
         2つのモデルをマージする\\
