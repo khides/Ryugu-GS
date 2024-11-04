@@ -3,9 +3,9 @@ import shutil
 from sklearn.model_selection import train_test_split
 
 # 元のディレクトリと目的のディレクトリのパス
-source_dir = 'Ryugu_JPEG'
-train_dir = 'Ryugu_Data/Ryugu_train/Input'
-test_dir = 'Ryugu_Data/Ryugu_test/Input'
+source_dir = '../data_input/BOX-A_full/Input'
+train_dir = '../data_input/BOX-A_train/Input'
+test_dir = '../data_input/BOX-A_query/Input'
 
 # ディレクトリが存在しない場合は作成
 os.makedirs(train_dir, exist_ok=True)
