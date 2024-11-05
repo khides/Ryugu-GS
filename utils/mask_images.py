@@ -11,10 +11,10 @@ from omegaconf import OmegaConf
 from notice import send_notification
 
 # Detectron2の設定
-def setup_cfg():
+def setup_cfg(threshold=0.05):
     cfg = get_cfg()
     cfg.merge_from_file(model_zoo.get_config_file("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml"))
-    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = 0.005 # スコア閾値を設定（必要に応じて調整）
+    cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = threshold # スコア閾値を設定（必要に応じて調整）
     cfg.MODEL.WEIGHTS = model_zoo.get_checkpoint_url("COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml")
     cfg.MODEL.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     return cfg
@@ -45,10 +45,10 @@ if __name__ == "__main__":
     with open("config.yaml", mode="r") as f:
         conf = OmegaConf.load(f)
     # 入力ディレクトリと出力ディレクトリのパス
-    input_directory = conf.image_path
-    output_directory = conf.masked_path
+    input_directory = conf.input_path
+    output_directory = conf.input_path
     
-    cfg = setup_cfg()
+    cfg = setup_cfg(threshold=conf.mask_threshold)
     predictor = DefaultPredictor(cfg)
     send_notification(
         file = __file__,
