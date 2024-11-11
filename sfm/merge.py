@@ -23,6 +23,8 @@ def merge(logger: Logger, conf: OmegaConf) -> None:
     merger = ModelMerger(
         query_model=query_model,
         train_model=train_model,
+        merge_model_path=conf.merge_model_path,
+        merge_model_name=conf.merge_model_name,
         logger=logger
         )
     merger.merge(

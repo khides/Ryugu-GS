@@ -17,7 +17,9 @@ from pycpd import AffineRegistration
 from scipy.spatial.transform import Rotation as R
 
 class ModelMerger:
-    def __init__(self, query_model: Model, train_model: Model, logger: Logger) -> None:
+    def __init__(self, query_model: Model, train_model: Model, merge_model_path: str, merge_model_name: str, logger: Logger) -> None:
+        self.merge_model_path = merge_model_path
+        self.merge_model_name = merge_model_name
         self.now = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=9), 'JST')).strftime("%Y-%m-%d_%H-%M-%S")
         self.show_plot = False
         self.save_plot = False
@@ -36,7 +38,6 @@ class ModelMerger:
         self.query_camera_positions_transformed: np.ndarray = None
         self.query_camera_directions_transformed: np.ndarray = None
         self.query_object_points_transformed: np.ndarray = None
-        self.merge_model: Model = None
         self.B_reg: np.ndarray = None
         self.t_reg: np.ndarray = None
         self.query_object_points_down: np.ndarray = None
@@ -51,6 +52,7 @@ class ModelMerger:
         self.train_object_points_down_pretreeted: np.ndarray = None
         self.train_camera_positions: np.ndarray = None
         self.train_camera_directions: np.ndarray = None
+        self.new_model: Model = None
         
     def plot_setup(self, show_plot=True, save_plot=True) -> None:
         """
@@ -435,20 +437,19 @@ class ModelMerger:
             train_camera_positions = self.train_model.camera_positions
             
         
-        train_mean = np.mean(self.train_object_points, axis=0)
-        self.train_object_points = self.train_object_points - train_mean
-        self.train_object_points_down = self.train_object_points_down - train_mean
-        self.train_camera_positions = train_camera_positions - train_mean
+        self.train_mean = np.mean(self.train_object_points, axis=0)
+        self.train_object_points = self.train_object_points - self.train_mean
+        self.train_object_points_down = self.train_object_points_down - self.train_mean
+        self.train_camera_positions = train_camera_positions - self.train_mean
         self.train_camera_directions = self.train_model.camera_directions
         
-        query_mean = np.mean(self.query_object_points_pretreeted, axis=0)
+        self.query_mean = np.mean(self.query_object_points_pretreeted, axis=0)
         # self.query_object_points = self.query_object_points - query_mean
-        self.query_object_points_down_pretreeted = self.query_object_points_down_pretreeted - query_mean
-        self.query_object_points_pretreeted = self.query_object_points_pretreeted - query_mean
-        self.query_camera_positions_pretreeted = self.query_camera_positions_pretreeted - query_mean
+        self.query_object_points_down_pretreeted = self.query_object_points_down_pretreeted - self.query_mean
+        self.query_object_points_pretreeted = self.query_object_points_pretreeted - self.query_mean
+        self.query_camera_positions_pretreeted = self.query_camera_positions_pretreeted - self.query_mean
         # self.query_camera_directions_pretreeted = self.query_camera_directions_pretreeted - np.mean(self.query_camera_directions_pretreeted, axis=0)
         
-    
     def voxel_down_sample(self, voxel_size: float = 0.01, distance_threshold: float = 1.0e-5) -> None:
         """
         点群を外れ値除去してからダウンサンプリングする \\
@@ -572,6 +573,76 @@ class ModelMerger:
         if show_plot:
             plt.show()   
 
+    def merge_model (self):
+        self.train_model.update_points3d(mean=self.train_mean)
+        
+        index = 0
+        for pose in self.query_model.camera_pose:
+            self.query_model.camera_pose[pose]["position"] = self.query_camera_positions_transformed[index]
+            self.query_model.camera_pose[pose]["direction"] = self.query_camera_directions_transformed[index]
+            index += 1
+        self.query_model.update_images_bin()
+        self.query_model.update_points3d(R_init=self.R_init, t_init=self.t_init,mean=self.query_mean, B_reg=self.B_reg, t_reg=self.t_reg)
+        
+        
+        self.new_model = Model( model_path=self.merge_model_path, name=self.merge_model_name, logger=self.logger)
+        self.new_model.camera_positions =np.vstack([self.train_camera_positions, self.query_camera_positions_transformed])
+        self.new_model.camera_directions = np.vstack([self.train_camera_directions, self.query_camera_directions_transformed])
+        new_object_points = np.vstack([self.train_object_points, self.query_object_points_transformed])
+        self.new_model.pcd.points = o3d.utility.Vector3dVector(new_object_points)
+        
+        self.new_model.images_bin.update(self.train_model.images_bin)
+        max_point_id = max(self.train_model.points3d.keys(), default=-1)
+        self.logger.info(f"Max Point ID: {max_point_id}")
+        max_image_id = max(self.train_model.images_bin.keys(), default=-1)
+        self.logger.info(f"Max Image ID: {max_image_id}")
+        for image_id, image_data in self.query_model.images_bin.items():
+            new_image_id = max_image_id + image_id + 1
+            new_point3D_ids = []
+            for point3D_id in image_data["point3D_ids"]:
+                new_point_id = point3D_id
+                if point3D_id != 18446744073709551615:
+                    new_point_id = max_point_id + point3D_id + 1  # 新しいIDを設定
+                new_point3D_ids.append(new_point_id)
+            self.new_model.images_bin[new_image_id] = {
+                "qvec": image_data["qvec"],
+                "tvec": image_data["tvec"],
+                "camera_id": image_data["camera_id"],
+                "name": image_data["name"],
+                "xys": image_data["xys"],
+                "point3D_ids": new_point3D_ids
+            }
+        self.new_model.points3d.update(self.train_model.points3d)
+        for point_id, point_data in self.query_model.points3d.items():
+            new_point_id = max_point_id + point_id + 1
+            new_track = []
+            for image_id, point2D_idx in point_data["track"]:
+                new_image_id = max_image_id + image_id + 1  # 新しいimage_idを作成
+                new_track.append((new_image_id, point2D_idx))
+
+            # points3dに新しいエントリを追加し、trackと新しいpoint_idで更新
+            self.new_model.points3d[new_point_id] = {
+                "xyz": point_data["xyz"],
+                "rgb": point_data["rgb"],
+                "error": point_data["error"],
+                "track": new_track
+            }
+        self.new_model.write_model()
+        self.logger.info(f"Model Merged: {self.new_model.name}")
+
+    def culc_volume(self) -> None:
+        query_pcd_filtered = o3d.geometry.PointCloud()
+        train_pcd_filtered = o3d.geometry.PointCloud()
+        query_pcd_filtered.points = o3d.utility.Vector3dVector(self.query_object_points_down_transformed)
+        train_pcd_filtered.points = o3d.utility.Vector3dVector(self.train_object_points_down)
+        
+        query_hull, _ = query_pcd_filtered.compute_convex_hull()
+        query_volume = query_hull.get_volume()
+        train_hull, _ = train_pcd_filtered.compute_convex_hull()
+        train_volume = train_hull.get_volume()
+        self.logger.info(f"Transformed Query Object Volume: {query_volume}")
+        self.logger.info(f"Train Object Volume: {train_volume}")
+    
     def merge(self, estimate_type, show_plot = True, save_plot = True):
         """
         2つのモデルをマージする\\
@@ -580,10 +651,11 @@ class ModelMerger:
         - show_plot: プロットを表示するかどうか
         - save_plot: プロットを保存するかどうか
         """
+        ## read points
         self.read_points()
         
         ## plot initial points and poses
-        self.plot_poses(camera_positions_list=[self.train_model.camera_positions, self.query_model.camera_positions],
+        self.plot_poses(camera_positions_list=[self.train_model.camera_positions,self.query_model.camera_positions],
                         camera_directions_list=[self.train_model.camera_directions, self.query_model.camera_directions],
                         label_list=[self.train_model.name, self.query_model.name],
                         color_list=['r', 'b'],
@@ -628,9 +700,9 @@ class ModelMerger:
             
         # ダウンサンプリングで点群を軽量化
         self.voxel_down_sample(voxel_size=0.01, distance_threshold=1.0e-5)
+        
         # Pretreetment
         self.pretreet(query_positions=query_positions, train_positions=train_positions)
-        
         transformed_query_positions = np.dot(query_positions, self.R_init.T) + self.t_init
         trainformed_query_directions = np.dot(query_directions, self.R_init.T)
         self.plot_poses(camera_positions_list=[train_positions, transformed_query_positions],
@@ -681,6 +753,7 @@ class ModelMerger:
                         show_plot=show_plot,
                         save_plot=False)
         
+        ## estimate transformation matrix
         if estimate_type == 'icp':
             self.estimate_transformation_matrix_with_icp()
             # self.transform_query_camera_pose()
@@ -733,17 +806,9 @@ class ModelMerger:
                         #  center=[0.7,-0.3,0.3]
                         # center=[-1, 0,1]
                         )        
-        query_pcd_filtered = o3d.geometry.PointCloud()
-        train_pcd_filtered = o3d.geometry.PointCloud()
-        query_pcd_filtered.points = o3d.utility.Vector3dVector(self.query_object_points_down_transformed)
-        train_pcd_filtered.points = o3d.utility.Vector3dVector(self.train_object_points_down)
         
-        query_hull, _ = query_pcd_filtered.compute_convex_hull()
-        query_volume = query_hull.get_volume()
-        train_hull, _ = train_pcd_filtered.compute_convex_hull()
-        train_volume = train_hull.get_volume()
-        self.logger.info(f"Transformed Query Object Volume: {query_volume}")
-        self.logger.info(f"Train Object Volume: {train_volume}")
+        ## culculate volume
+        self.culc_volume()
         
         ## plot all points
         self.plot_points(points_list=[self.train_object_points],
@@ -787,6 +852,11 @@ class ModelMerger:
                         title="Merged Camera Poses",
                         show_plot=show_plot,
                         save_plot=save_plot) 
-        
         self.logger.info("Processed all images in Input")
+        
+        ## merge model
+        self.merge_model()
+        self.logger.info("Model Merged")
+    
+
 

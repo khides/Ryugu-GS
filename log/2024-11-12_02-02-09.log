@@ -1,0 +1,795 @@
+2024-11-12 02:02:10,498 INFO:Model BOX-A is read.
+2024-11-12 02:02:10,815 INFO:Model pole-18-8-24 is read.
+2024-11-12 02:02:11,193 INFO:Query Camera Positions: [[-2.64142148  2.42679491 -1.37840229]
+ [-1.50648758  3.6878357   1.35153342]
+ [ 1.16235622  2.12734531  3.54901088]]
+2024-11-12 02:02:11,194 INFO:Train Camera Positions: [[-2.99958881 -0.22771734 -2.15274896]
+ [-3.65636888 -0.11683224 -0.37752894]
+ [-3.08450418  0.07960234  2.00215612]]
+2024-11-12 02:02:11,328 INFO:Filtering outliers with threshold: 1e-05
+2024-11-12 02:02:11,418 INFO:Filtering outliers with threshold: 1e-05
+2024-11-12 02:02:11,646 INFO:Query Object Volume: 0.0027031099842395345
+2024-11-12 02:02:11,647 INFO:Train Object Volume: 0.00260036115342336
+2024-11-12 02:02:11,663 INFO:Query Object Volume Down: 0.0025837165769498783
+2024-11-12 02:02:11,663 INFO:Train Object Volume Down: 0.0024720978112414147
+2024-11-12 02:02:11,667 INFO:Estimated Pretreetment Rotation Matrix: [[ 0.31251422 -0.88805161 -0.33719313]
+ [ 0.76236477  0.44624376 -0.46868589]
+ [ 0.56668759 -0.11059316  0.81647678]]
+2024-11-12 02:02:11,667 INFO:Estimated Pretreetment Translation Matrix: [-1.19630902 -0.03424458 -0.23520266]
+2024-11-12 02:02:11,668 INFO:Estimated Pretreetment Scale: 0.651647724247965
+2024-11-12 02:02:12,418 INFO:Estimating Affine Matrix with CPD...
+2024-11-12 02:02:21,884 INFO:Estimated B: [[ 0.89674744 -0.04094306  0.27944736]
+ [ 0.07643018  1.02433614 -0.07282678]
+ [-0.24179649  0.00712427  0.91716298]]
+2024-11-12 02:02:21,885 INFO:Estimated t: [ 0.00156481  0.01904192 -0.00716999]
+2024-11-12 02:02:22,219 INFO:Transformed Query Object Volume: 0.002362703994513828
+2024-11-12 02:02:22,220 INFO:Train Object Volume: 0.0024720978112414142
+2024-11-12 02:02:22,928 DEBUG:findfont: Matching sans\-serif:style=normal:variant=normal:weight=normal:stretch=normal:size=10.0.
+2024-11-12 02:02:22,928 DEBUG:findfont: score(<Font 'cmex10' (cmex10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'STIXSizeFourSym' (STIXSizFourSymBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'DejaVu Serif' (DejaVuSerif-Bold.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'STIXSizeThreeSym' (STIXSizThreeSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'STIXSizeOneSym' (STIXSizOneSymBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'STIXSizeFiveSym' (STIXSizFiveSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'STIXNonUnicode' (STIXNonUni.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'STIXNonUnicode' (STIXNonUniBolIta.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'DejaVu Serif' (DejaVuSerif-BoldItalic.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'STIXGeneral' (STIXGeneralBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'cmsy10' (cmsy10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'cmb10' (cmb10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'STIXSizeTwoSym' (STIXSizTwoSymBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'STIXSizeTwoSym' (STIXSizTwoSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'DejaVu Sans Mono' (DejaVuSansMono.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,929 DEBUG:findfont: score(<Font 'DejaVu Sans' (DejaVuSans-BoldOblique.ttf) oblique normal 700 normal>) = 1.335
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'DejaVu Serif' (DejaVuSerif.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'STIXGeneral' (STIXGeneralItalic.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'STIXSizeFourSym' (STIXSizFourSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'DejaVu Sans' (DejaVuSans-Oblique.ttf) oblique normal 400 normal>) = 1.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'STIXSizeThreeSym' (STIXSizThreeSymBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'cmmi10' (cmmi10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'DejaVu Serif' (DejaVuSerif-Italic.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'cmr10' (cmr10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'cmss10' (cmss10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'DejaVu Sans Display' (DejaVuSansDisplay.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'STIXGeneral' (STIXGeneral.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'STIXGeneral' (STIXGeneralBolIta.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'DejaVu Serif Display' (DejaVuSerifDisplay.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'DejaVu Sans Mono' (DejaVuSansMono-Oblique.ttf) oblique normal 400 normal>) = 11.05
+2024-11-12 02:02:22,930 DEBUG:findfont: score(<Font 'DejaVu Sans' (DejaVuSans.ttf) normal normal 400 normal>) = 0.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'STIXNonUnicode' (STIXNonUniIta.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'STIXSizeOneSym' (STIXSizOneSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'cmtt10' (cmtt10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'DejaVu Sans Mono' (DejaVuSansMono-BoldOblique.ttf) oblique normal 700 normal>) = 11.335
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'STIXNonUnicode' (STIXNonUniBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'DejaVu Sans' (DejaVuSans-Bold.ttf) normal normal 700 normal>) = 0.33499999999999996
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'DejaVu Sans Mono' (DejaVuSansMono-Bold.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuii.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'Yu Mincho' (yumindb.ttf) normal normal 600 normal>) = 10.24
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'Wingdings' (wingding.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'HGGyoshotai' (HGRGY.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'Century Gothic' (GOTHICBI.TTF) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'BIZ UDGothic' (BIZ-UDGothicR.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'Constantia' (constan.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'Yu Mincho' (yumin.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'Dubai' (DUBAI-REGULAR.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,931 DEBUG:findfont: score(<Font 'HGMinchoB' (HGRMB.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Consolas' (consolai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Microsoft YaHei' (msyh.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Leelawadee' (LEELAWDB.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Microsoft YaHei' (msyhbd.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Calibri' (calibrii.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Cambria' (cambriai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'MS Reference Specialty' (REFSPCL.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Myanmar Text' (mmrtext.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'HGSoeiKakugothicUB' (HGRSGU.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Verdana' (verdanab.ttf) normal normal 700 normal>) = 3.9713636363636367
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Times New Roman' (times.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Consolas' (consolaz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Corbel' (corbeli.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Bookman Old Style' (BOOKOSB.TTF) normal normal 600 normal>) = 10.24
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Constantia' (constani.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,932 DEBUG:findfont: score(<Font 'Comic Sans MS' (comicz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Microsoft New Tai Lue' (ntailub.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Garamond' (GARAIT.TTF) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Dubai' (DUBAI-MEDIUM.TTF) normal normal 500 normal>) = 10.145
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Arial' (ARIALNB.TTF) normal normal 700 condensed>) = 6.8986363636363635
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Yu Gothic' (YuGothL.ttc) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Cambria' (cambriaz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Segoe UI Symbol' (seguisym.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'MT Extra' (MTEXTRA.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Leelawadee' (LEELAWAD.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Segoe Script' (segoescb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Times New Roman' (timesbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Microsoft JhengHei' (msjhbd.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Nirmala UI' (NirmalaB.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Segoe UI' (seguisbi.ttf) italic normal 600 normal>) = 11.24
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Calibri' (calibrib.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,933 DEBUG:findfont: score(<Font 'Cambria' (cambria.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'MS Gothic' (msgothic.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Bahnschrift' (bahnschrift.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Franklin Gothic Medium' (framd.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Microsoft Uighur' (MSUIGHUR.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Monotype Corsiva' (MTCORSVA.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'HGGothicM' (HGRGM.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Calibri' (calibril.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Segoe UI' (seguibl.ttf) normal normal 900 normal>) = 10.525
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Book Antiqua' (ANTQUAB.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Segoe UI Historic' (seguihis.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Times New Roman' (timesi.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Ebrima' (ebrimabd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Comic Sans MS' (comici.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Microsoft PhagsPa' (phagspa.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'Gadugi' (gadugib.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,934 DEBUG:findfont: score(<Font 'OCRB' (OCRB.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Verdana' (verdana.ttf) normal normal 400 normal>) = 3.6863636363636365
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Bookman Old Style' (BOOKOS.TTF) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Wingdings 3' (WINGDNG3.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Microsoft New Tai Lue' (ntailu.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Marlett' (marlett.ttf) normal normal 500 normal>) = 10.145
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Candara' (Candaraz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Courier New' (cour.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Trebuchet MS' (trebuc.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Segoe UI' (segoeui.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Corbel' (corbelli.ttf) italic normal 300 normal>) = 11.145
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Candara' (Candara.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Constantia' (constanb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Sylfaen' (sylfaen.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Yu Gothic' (YuGothM.ttc) normal normal 500 normal>) = 10.145
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Ebrima' (ebrima.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Verdana' (verdanai.ttf) italic normal 400 normal>) = 4.6863636363636365
+2024-11-12 02:02:22,935 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuib.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Palatino Linotype' (palab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Arial' (ariali.ttf) italic normal 400 normal>) = 7.413636363636363
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Segoe UI Emoji' (seguiemj.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Javanese Text' (javatext.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Leelawadee UI' (LeelUIsl.ttf) normal normal 350 normal>) = 10.0975
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Segoe Script' (segoesc.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Georgia' (georgiab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Corbel' (corbel.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'UD Digi Kyokasho N-B' (UDDigiKyokashoN-B.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Sitka Small' (SitkaB.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Segoe Print' (segoepr.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Symbol' (symbol.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Arial' (arialbd.ttf) normal normal 700 normal>) = 6.698636363636363
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Webdings' (webdings.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Candara' (Candarab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,936 DEBUG:findfont: score(<Font 'Microsoft Himalaya' (himalaya.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'HGMaruGothicMPRO' (HGRSMP.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuil.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Lucida Console' (lucon.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Courier New' (courbi.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'HGSoeiKakupoptai' (HGRPP1.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Arial' (ARIALNBI.TTF) italic normal 700 condensed>) = 7.8986363636363635
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Arial' (arialbi.ttf) italic normal 700 normal>) = 7.698636363636363
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'HGSoeiPresenceEB' (HGRPRE.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Century Gothic' (GOTHICB.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'HoloLens MDL2 Assets' (holomdl2.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Impact' (impact.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Georgia' (georgia.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Leelawadee UI' (LeelawUI.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Dubai' (DUBAI-LIGHT.TTF) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'MV Boli' (mvboli.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,937 DEBUG:findfont: score(<Font 'Courier New' (couri.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Calibri' (calibriz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Comic Sans MS' (comic.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Book Antiqua' (ANTQUABI.TTF) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Georgia' (georgiai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Tahoma' (tahoma.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Segoe UI' (seguisli.ttf) italic normal 350 normal>) = 11.0975
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Trebuchet MS' (trebucbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Mongolian Baiti' (monbaiti.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Palatino Linotype' (palabi.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Palatino Linotype' (pala.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Yu Gothic' (YuGothB.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Trebuchet MS' (trebucit.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Arial' (ARIALN.TTF) normal normal 400 condensed>) = 6.613636363636363
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Sitka Small' (SitkaZ.ttc) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'Comic Sans MS' (comicbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,938 DEBUG:findfont: score(<Font 'HGGothicE' (HGRGE.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Franklin Gothic Medium' (framdit.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Microsoft Tai Le' (taileb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'HGMinchoE' (HGRME.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Gabriola' (Gabriola.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'SimSun-ExtB' (simsunb.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Arial' (ARIALNI.TTF) italic normal 400 condensed>) = 7.613636363636363
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Segoe Print' (segoeprb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Courier New' (courbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Corbel' (corbelz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Yu Gothic' (YuGothR.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Microsoft PhagsPa' (phagspab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Wingdings 2' (WINGDNG2.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Microsoft Yi Baiti' (msyi.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Arial' (arial.ttf) normal normal 400 normal>) = 6.413636363636363
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Consolas' (consola.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'Candara' (Candarali.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,939 DEBUG:findfont: score(<Font 'UD Digi Kyokasho N-R' (UDDigiKyokashoN-R.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'BIZ UDMincho' (BIZ-UDMinchoM.ttc) normal normal 500 normal>) = 10.145
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Meiryo' (meiryo.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Nirmala UI' (NirmalaS.ttf) normal normal 350 normal>) = 10.0975
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Segoe UI' (seguili.ttf) italic normal 300 normal>) = 11.145
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Candara' (Candaral.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Lucida Sans Unicode' (l_10646.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Candara' (Candarai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Microsoft Uighur' (MSUIGHUB.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Calibri' (calibrili.ttf) italic normal 300 normal>) = 11.145
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Tahoma' (tahomabd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Constantia' (constanz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Segoe MDL2 Assets' (segmdl2.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Meiryo' (meiryob.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Dubai' (DUBAI-BOLD.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Cambria' (cambriab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,940 DEBUG:findfont: score(<Font 'Century' (CENTURY.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Microsoft JhengHei' (msjh.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Leelawadee UI' (LeelaUIb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Malgun Gothic' (malgun.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Book Antiqua' (BKANT.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'BIZ UDGothic' (BIZ-UDGothicB.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Myanmar Text' (mmrtextb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuisl.ttf) normal normal 350 normal>) = 10.0975
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'HGSeikaishotaiPRO' (HGRSKP.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Segoe UI' (seguisb.ttf) normal normal 600 normal>) = 10.24
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Trebuchet MS' (trebucbi.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Microsoft YaHei' (msyhl.ttc) normal normal 290 normal>) = 10.1545
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Microsoft Tai Le' (taile.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'SimSun' (simsun.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Sitka Small' (Sitka.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,941 DEBUG:findfont: score(<Font 'Nirmala UI' (Nirmala.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Garamond' (GARABD.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Corbel' (corbelb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Ink Free' (Inkfree.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Microsoft Sans Serif' (micross.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Garamond' (GARA.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'MS Outlook' (OUTLOOK.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'MingLiU-ExtB' (mingliub.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Bookman Old Style' (BOOKOSI.TTF) italic normal 300 normal>) = 11.145
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Malgun Gothic' (malgunbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Palatino Linotype' (palai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Gadugi' (gadugi.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Book Antiqua' (ANTQUAI.TTF) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Century Gothic' (GOTHIC.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Calibri' (calibri.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,942 DEBUG:findfont: score(<Font 'Bookman Old Style' (BOOKOSBI.TTF) italic normal 600 normal>) = 11.24
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Century Gothic' (GOTHICI.TTF) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'MS Reference Sans Serif' (REFSAN.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Sitka Small' (SitkaI.ttc) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Segoe UI' (seguibli.ttf) italic normal 900 normal>) = 11.525
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Consolas' (consolab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Yu Mincho' (yuminl.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Bookshelf Symbol 7' (BSSYM7.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Times New Roman' (timesbi.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Microsoft JhengHei' (msjhl.ttc) normal normal 290 normal>) = 10.1545
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'HGKyokashotai' (HGRKK.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Verdana' (verdanaz.ttf) italic normal 700 normal>) = 4.971363636363637
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Arial' (ariblk.ttf) normal normal 900 normal>) = 6.888636363636364
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'MS Mincho' (msmincho.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Corbel' (corbell.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Georgia' (georgiaz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,943 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuiz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,944 DEBUG:findfont: score(<Font 'Malgun Gothic' (malgunsl.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,944 DEBUG:findfont: Matching sans\-serif:style=normal:variant=normal:weight=normal:stretch=normal:size=10.0 to DejaVu Sans ('C:\\Users\\taiko\\anaconda3\\envs\\detectron2_env\\lib\\site-packages\\matplotlib\\mpl-data\\fonts\\ttf\\DejaVuSans.ttf') with score of 0.050000.
+2024-11-12 02:02:22,987 DEBUG:findfont: Matching sans\-serif:style=normal:variant=normal:weight=normal:stretch=normal:size=12.0.
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'cmex10' (cmex10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'STIXSizeFourSym' (STIXSizFourSymBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'DejaVu Serif' (DejaVuSerif-Bold.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'STIXSizeThreeSym' (STIXSizThreeSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'STIXSizeOneSym' (STIXSizOneSymBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'STIXSizeFiveSym' (STIXSizFiveSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'STIXNonUnicode' (STIXNonUni.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'STIXNonUnicode' (STIXNonUniBolIta.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'DejaVu Serif' (DejaVuSerif-BoldItalic.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'STIXGeneral' (STIXGeneralBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'cmsy10' (cmsy10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'cmb10' (cmb10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'STIXSizeTwoSym' (STIXSizTwoSymBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'STIXSizeTwoSym' (STIXSizTwoSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'DejaVu Sans Mono' (DejaVuSansMono.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,988 DEBUG:findfont: score(<Font 'DejaVu Sans' (DejaVuSans-BoldOblique.ttf) oblique normal 700 normal>) = 1.335
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'DejaVu Serif' (DejaVuSerif.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'STIXGeneral' (STIXGeneralItalic.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'STIXSizeFourSym' (STIXSizFourSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'DejaVu Sans' (DejaVuSans-Oblique.ttf) oblique normal 400 normal>) = 1.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'STIXSizeThreeSym' (STIXSizThreeSymBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'cmmi10' (cmmi10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'DejaVu Serif' (DejaVuSerif-Italic.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'cmr10' (cmr10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'cmss10' (cmss10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'DejaVu Sans Display' (DejaVuSansDisplay.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'STIXGeneral' (STIXGeneral.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'STIXGeneral' (STIXGeneralBolIta.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,989 DEBUG:findfont: score(<Font 'DejaVu Serif Display' (DejaVuSerifDisplay.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'DejaVu Sans Mono' (DejaVuSansMono-Oblique.ttf) oblique normal 400 normal>) = 11.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'DejaVu Sans' (DejaVuSans.ttf) normal normal 400 normal>) = 0.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'STIXNonUnicode' (STIXNonUniIta.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'STIXSizeOneSym' (STIXSizOneSymReg.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'cmtt10' (cmtt10.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'DejaVu Sans Mono' (DejaVuSansMono-BoldOblique.ttf) oblique normal 700 normal>) = 11.335
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'STIXNonUnicode' (STIXNonUniBol.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'DejaVu Sans' (DejaVuSans-Bold.ttf) normal normal 700 normal>) = 0.33499999999999996
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'DejaVu Sans Mono' (DejaVuSansMono-Bold.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuii.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'Yu Mincho' (yumindb.ttf) normal normal 600 normal>) = 10.24
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'Wingdings' (wingding.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'HGGyoshotai' (HGRGY.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'Century Gothic' (GOTHICBI.TTF) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'BIZ UDGothic' (BIZ-UDGothicR.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,990 DEBUG:findfont: score(<Font 'Constantia' (constan.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Yu Mincho' (yumin.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Dubai' (DUBAI-REGULAR.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'HGMinchoB' (HGRMB.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Consolas' (consolai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Microsoft YaHei' (msyh.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Leelawadee' (LEELAWDB.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Microsoft YaHei' (msyhbd.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Calibri' (calibrii.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Cambria' (cambriai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'MS Reference Specialty' (REFSPCL.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Myanmar Text' (mmrtext.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'HGSoeiKakugothicUB' (HGRSGU.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Verdana' (verdanab.ttf) normal normal 700 normal>) = 3.9713636363636367
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Times New Roman' (times.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Consolas' (consolaz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Corbel' (corbeli.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,991 DEBUG:findfont: score(<Font 'Bookman Old Style' (BOOKOSB.TTF) normal normal 600 normal>) = 10.24
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Constantia' (constani.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Comic Sans MS' (comicz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Microsoft New Tai Lue' (ntailub.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Garamond' (GARAIT.TTF) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Dubai' (DUBAI-MEDIUM.TTF) normal normal 500 normal>) = 10.145
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Arial' (ARIALNB.TTF) normal normal 700 condensed>) = 6.8986363636363635
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Yu Gothic' (YuGothL.ttc) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Cambria' (cambriaz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Segoe UI Symbol' (seguisym.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'MT Extra' (MTEXTRA.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Leelawadee' (LEELAWAD.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Segoe Script' (segoescb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Times New Roman' (timesbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Microsoft JhengHei' (msjhbd.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Nirmala UI' (NirmalaB.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,992 DEBUG:findfont: score(<Font 'Segoe UI' (seguisbi.ttf) italic normal 600 normal>) = 11.24
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Calibri' (calibrib.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Cambria' (cambria.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'MS Gothic' (msgothic.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Bahnschrift' (bahnschrift.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Franklin Gothic Medium' (framd.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Microsoft Uighur' (MSUIGHUR.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Monotype Corsiva' (MTCORSVA.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'HGGothicM' (HGRGM.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Calibri' (calibril.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Segoe UI' (seguibl.ttf) normal normal 900 normal>) = 10.525
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Book Antiqua' (ANTQUAB.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Segoe UI Historic' (seguihis.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Times New Roman' (timesi.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Ebrima' (ebrimabd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Comic Sans MS' (comici.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Microsoft PhagsPa' (phagspa.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,993 DEBUG:findfont: score(<Font 'Gadugi' (gadugib.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'OCRB' (OCRB.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Verdana' (verdana.ttf) normal normal 400 normal>) = 3.6863636363636365
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Bookman Old Style' (BOOKOS.TTF) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Wingdings 3' (WINGDNG3.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Microsoft New Tai Lue' (ntailu.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Marlett' (marlett.ttf) normal normal 500 normal>) = 10.145
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Candara' (Candaraz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Courier New' (cour.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Trebuchet MS' (trebuc.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Segoe UI' (segoeui.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Corbel' (corbelli.ttf) italic normal 300 normal>) = 11.145
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Candara' (Candara.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Constantia' (constanb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Sylfaen' (sylfaen.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Yu Gothic' (YuGothM.ttc) normal normal 500 normal>) = 10.145
+2024-11-12 02:02:22,994 DEBUG:findfont: score(<Font 'Ebrima' (ebrima.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Verdana' (verdanai.ttf) italic normal 400 normal>) = 4.6863636363636365
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuib.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Palatino Linotype' (palab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Arial' (ariali.ttf) italic normal 400 normal>) = 7.413636363636363
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Segoe UI Emoji' (seguiemj.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Javanese Text' (javatext.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Leelawadee UI' (LeelUIsl.ttf) normal normal 350 normal>) = 10.0975
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Segoe Script' (segoesc.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Georgia' (georgiab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Corbel' (corbel.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'UD Digi Kyokasho N-B' (UDDigiKyokashoN-B.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Sitka Small' (SitkaB.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Segoe Print' (segoepr.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Symbol' (symbol.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Arial' (arialbd.ttf) normal normal 700 normal>) = 6.698636363636363
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Webdings' (webdings.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,995 DEBUG:findfont: score(<Font 'Candara' (Candarab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Microsoft Himalaya' (himalaya.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'HGMaruGothicMPRO' (HGRSMP.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuil.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Lucida Console' (lucon.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Courier New' (courbi.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'HGSoeiKakupoptai' (HGRPP1.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Arial' (ARIALNBI.TTF) italic normal 700 condensed>) = 7.8986363636363635
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Arial' (arialbi.ttf) italic normal 700 normal>) = 7.698636363636363
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'HGSoeiPresenceEB' (HGRPRE.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Century Gothic' (GOTHICB.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'HoloLens MDL2 Assets' (holomdl2.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Impact' (impact.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Georgia' (georgia.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Leelawadee UI' (LeelawUI.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'Dubai' (DUBAI-LIGHT.TTF) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:22,996 DEBUG:findfont: score(<Font 'MV Boli' (mvboli.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Courier New' (couri.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Calibri' (calibriz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Comic Sans MS' (comic.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Book Antiqua' (ANTQUABI.TTF) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Georgia' (georgiai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Tahoma' (tahoma.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Segoe UI' (seguisli.ttf) italic normal 350 normal>) = 11.0975
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Trebuchet MS' (trebucbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Mongolian Baiti' (monbaiti.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Palatino Linotype' (palabi.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Palatino Linotype' (pala.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Yu Gothic' (YuGothB.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Trebuchet MS' (trebucit.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Arial' (ARIALN.TTF) normal normal 400 condensed>) = 6.613636363636363
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Sitka Small' (SitkaZ.ttc) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,997 DEBUG:findfont: score(<Font 'Comic Sans MS' (comicbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'HGGothicE' (HGRGE.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Franklin Gothic Medium' (framdit.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Microsoft Tai Le' (taileb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'HGMinchoE' (HGRME.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Gabriola' (Gabriola.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'SimSun-ExtB' (simsunb.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Arial' (ARIALNI.TTF) italic normal 400 condensed>) = 7.613636363636363
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Segoe Print' (segoeprb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Courier New' (courbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Corbel' (corbelz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Yu Gothic' (YuGothR.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Microsoft PhagsPa' (phagspab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Wingdings 2' (WINGDNG2.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Microsoft Yi Baiti' (msyi.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Arial' (arial.ttf) normal normal 400 normal>) = 6.413636363636363
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Consolas' (consola.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,998 DEBUG:findfont: score(<Font 'Candara' (Candarali.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'UD Digi Kyokasho N-R' (UDDigiKyokashoN-R.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'BIZ UDMincho' (BIZ-UDMinchoM.ttc) normal normal 500 normal>) = 10.145
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Meiryo' (meiryo.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Nirmala UI' (NirmalaS.ttf) normal normal 350 normal>) = 10.0975
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Segoe UI' (seguili.ttf) italic normal 300 normal>) = 11.145
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Candara' (Candaral.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Lucida Sans Unicode' (l_10646.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Candara' (Candarai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Microsoft Uighur' (MSUIGHUB.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Calibri' (calibrili.ttf) italic normal 300 normal>) = 11.145
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Tahoma' (tahomabd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Constantia' (constanz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Segoe MDL2 Assets' (segmdl2.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Meiryo' (meiryob.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Dubai' (DUBAI-BOLD.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:22,999 DEBUG:findfont: score(<Font 'Cambria' (cambriab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Century' (CENTURY.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Microsoft JhengHei' (msjh.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Leelawadee UI' (LeelaUIb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Malgun Gothic' (malgun.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Book Antiqua' (BKANT.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'BIZ UDGothic' (BIZ-UDGothicB.ttc) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Myanmar Text' (mmrtextb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuisl.ttf) normal normal 350 normal>) = 10.0975
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'HGSeikaishotaiPRO' (HGRSKP.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Segoe UI' (seguisb.ttf) normal normal 600 normal>) = 10.24
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Trebuchet MS' (trebucbi.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Microsoft YaHei' (msyhl.ttc) normal normal 290 normal>) = 10.1545
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Microsoft Tai Le' (taile.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'SimSun' (simsun.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Sitka Small' (Sitka.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Nirmala UI' (Nirmala.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,000 DEBUG:findfont: score(<Font 'Garamond' (GARABD.TTF) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Corbel' (corbelb.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Ink Free' (Inkfree.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Microsoft Sans Serif' (micross.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Garamond' (GARA.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'MS Outlook' (OUTLOOK.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'MingLiU-ExtB' (mingliub.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Bookman Old Style' (BOOKOSI.TTF) italic normal 300 normal>) = 11.145
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Malgun Gothic' (malgunbd.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Palatino Linotype' (palai.ttf) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Gadugi' (gadugi.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Book Antiqua' (ANTQUAI.TTF) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Century Gothic' (GOTHIC.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Calibri' (calibri.ttf) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Bookman Old Style' (BOOKOSBI.TTF) italic normal 600 normal>) = 11.24
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Century Gothic' (GOTHICI.TTF) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'MS Reference Sans Serif' (REFSAN.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,001 DEBUG:findfont: score(<Font 'Sitka Small' (SitkaI.ttc) italic normal 400 normal>) = 11.05
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Segoe UI' (seguibli.ttf) italic normal 900 normal>) = 11.525
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Consolas' (consolab.ttf) normal normal 700 normal>) = 10.335
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Yu Mincho' (yuminl.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Bookshelf Symbol 7' (BSSYM7.TTF) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Times New Roman' (timesbi.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Microsoft JhengHei' (msjhl.ttc) normal normal 290 normal>) = 10.1545
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'HGKyokashotai' (HGRKK.TTC) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Verdana' (verdanaz.ttf) italic normal 700 normal>) = 4.971363636363637
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Arial' (ariblk.ttf) normal normal 900 normal>) = 6.888636363636364
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'MS Mincho' (msmincho.ttc) normal normal 400 normal>) = 10.05
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Corbel' (corbell.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Georgia' (georgiaz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Segoe UI' (segoeuiz.ttf) italic normal 700 normal>) = 11.335
+2024-11-12 02:02:23,002 DEBUG:findfont: score(<Font 'Malgun Gothic' (malgunsl.ttf) normal normal 300 normal>) = 10.145
+2024-11-12 02:02:23,002 DEBUG:findfont: Matching sans\-serif:style=normal:variant=normal:weight=normal:stretch=normal:size=12.0 to DejaVu Sans ('C:\\Users\\taiko\\anaconda3\\envs\\detectron2_env\\lib\\site-packages\\matplotlib\\mpl-data\\fonts\\ttf\\DejaVuSans.ttf') with score of 0.050000.
+2024-11-12 02:02:23,054 INFO:Processed all images in Input
+2024-11-12 02:02:23,230 INFO:R: [[ 0.9052934   0.10799679  0.4108291 ]
+ [ 0.10799679  0.876848   -0.46848082]
+ [-0.4108291   0.46848082  0.7821414 ]]
+2024-11-12 02:02:23,232 INFO:R: [[ 0.97300163  0.05472417  0.22421663]
+ [ 0.05472417  0.88907719 -0.45447444]
+ [-0.22421663  0.45447444  0.86207882]]
+2024-11-12 02:02:23,233 INFO:R: [[ 0.87341071  0.12793352  0.46987949]
+ [ 0.12793352  0.87070796 -0.4748691 ]
+ [-0.46987949  0.4748691   0.74411868]]
+2024-11-12 02:02:23,234 INFO:R: [[ 0.99988116  0.00353275  0.01500637]
+ [ 0.00353275  0.89498462 -0.446083  ]
+ [-0.01500637  0.446083    0.89486578]]
+2024-11-12 02:02:23,235 INFO:R: [[ 0.9961971   0.0200776   0.08478343]
+ [ 0.0200776   0.89399935 -0.44761819]
+ [-0.08478343  0.44761819  0.89019645]]
+2024-11-12 02:02:23,236 INFO:R: [[ 0.24805733  0.56235451  0.78881238]
+ [ 0.56235451  0.57943257 -0.58992821]
+ [-0.78881238  0.58992821 -0.1725101 ]]
+2024-11-12 02:02:23,237 INFO:R: [[ 0.83912853  0.14843288  0.52328863]
+ [ 0.14843288  0.86304396 -0.48282793]
+ [-0.52328863  0.48282793  0.70217249]]
+2024-11-12 02:02:23,238 INFO:R: [[ 0.96252971 -0.06389194 -0.26354197]
+ [-0.06389194  0.89105554 -0.44937495]
+ [ 0.26354197  0.44937495  0.85358525]]
+2024-11-12 02:02:23,239 INFO:R: [[ 0.91297959 -0.09976525 -0.39561997]
+ [-0.09976525  0.88562331 -0.45356173]
+ [ 0.39561997  0.45356173  0.7986029 ]]
+2024-11-12 02:02:23,239 INFO:R: [[ 0.66215222  0.24646131  0.70768019]
+ [ 0.24646131  0.82020549 -0.51625554]
+ [-0.70768019  0.51625554  0.48235771]]
+2024-11-12 02:02:23,240 INFO:R: [[ 0.80568712 -0.15755691 -0.5710027 ]
+ [-0.15755691  0.87224635 -0.46299258]
+ [ 0.5710027   0.46299258  0.67793347]]
+2024-11-12 02:02:23,241 INFO:R: [[ 0.98719973  0.03713973  0.1551043 ]
+ [ 0.03713973  0.89223987 -0.45003183]
+ [-0.1551043   0.45003183  0.8794396 ]]
+2024-11-12 02:02:23,242 INFO:R: [[ 0.22197807  0.68115675  0.69767559]
+ [ 0.68115675  0.40364854 -0.61081367]
+ [-0.69767559  0.61081367 -0.37437339]]
+2024-11-12 02:02:23,243 INFO:R: [[ 0.3213038   0.47530006  0.81905661]
+ [ 0.47530006  0.66714099 -0.57359633]
+ [-0.81905661  0.57359633 -0.0115552 ]]
+2024-11-12 02:02:23,243 INFO:R: [[ 0.56590565  0.30202817  0.76715694]
+ [ 0.30202817  0.78985901 -0.53376186]
+ [-0.76715694  0.53376186  0.35576466]]
+2024-11-12 02:02:23,244 INFO:R: [[ 0.27942008  0.51648611  0.80942357]
+ [ 0.51648611  0.62980109 -0.58016608]
+ [-0.80942357  0.58016608 -0.09077883]]
+2024-11-12 02:02:23,245 INFO:R: [[ 0.61609806  0.27371154  0.73858322]
+ [ 0.27371154  0.80485118 -0.52658956]
+ [-0.73858322  0.52658956  0.42094924]]
+2024-11-12 02:02:23,246 INFO:R: [[ 0.24480233  0.71622807  0.6535206 ]
+ [ 0.71622807  0.32073063 -0.61979772]
+ [-0.6535206   0.61979772 -0.43446704]]
+2024-11-12 02:02:23,247 INFO:R: [[ 0.27571783  0.74811263  0.60357864]
+ [ 0.74811263  0.22727284 -0.62343769]
+ [-0.60357864  0.62343769 -0.49700933]]
+2024-11-12 02:02:23,248 INFO:R: [[ 0.80955294  0.54369599  0.22140169]
+ [ 0.54369599 -0.55216536 -0.63206652]
+ [-0.22140169  0.63206652 -0.74261242]]
+2024-11-12 02:02:23,248 INFO:R: [[ 0.32794074  0.76976393  0.54764804]
+ [ 0.76976393  0.11832701 -0.62726567]
+ [-0.54764804  0.62726567 -0.55373226]]
+2024-11-12 02:02:23,249 INFO:R: [[ 0.70009841  0.65185793  0.29145061]
+ [ 0.65185793 -0.41686063 -0.63348911]
+ [-0.29145061  0.63348911 -0.71676222]]
+2024-11-12 02:02:23,250 INFO:R: [[ 0.90992599  0.38794988  0.14672962]
+ [ 0.38794988 -0.67090498 -0.6319663 ]
+ [-0.14672962  0.6319663  -0.76097899]]
+2024-11-12 02:02:23,251 INFO:R: [[ 0.58463189  0.72610696  0.36190363]
+ [ 0.72610696 -0.26931101 -0.63264545]
+ [-0.36190363  0.63264545 -0.68467912]]
+2024-11-12 02:02:23,252 INFO:R: [[ 0.97582888 -0.20583909 -0.07340486]
+ [-0.20583909 -0.75290695 -0.62510911]
+ [ 0.07340486  0.62510911 -0.77707807]]
+2024-11-12 02:02:23,253 INFO:R: [[ 0.90521118 -0.3984858  -0.14765426]
+ [-0.3984858  -0.67520746 -0.62072856]
+ [ 0.14765426  0.62072856 -0.76999628]]
+2024-11-12 02:02:23,254 INFO:R: [[ 0.80100573 -0.55652659 -0.22060821]
+ [-0.55652659 -0.55643595 -0.61697422]
+ [ 0.22060821  0.61697422 -0.75543023]]
+2024-11-12 02:02:23,255 INFO:R: [[ 0.67646259 -0.67591299 -0.29247222]
+ [-0.67591299 -0.41207277 -0.61101364]
+ [ 0.29247222  0.61101364 -0.73561018]]
+2024-11-12 02:02:23,256 INFO:R: [[ 0.32747821 -0.80648481 -0.49228069]
+ [-0.80648481  0.03286741 -0.59034057]
+ [ 0.49228069  0.59034057 -0.63965438]]
+2024-11-12 02:02:23,256 INFO:R: [[ 0.24705119 -0.79709997 -0.55099669]
+ [-0.79709997  0.15615995 -0.58330585]
+ [ 0.55099669  0.58330585 -0.59678886]]
+2024-11-12 02:02:23,257 INFO:R: [[ 0.1392101  -0.73998932 -0.65805497]
+ [-0.73998932  0.36385848 -0.56570559]
+ [ 0.65805497  0.56570559 -0.49693142]]
+2024-11-12 02:02:23,258 INFO:R: [[ 0.18777641 -0.7753637  -0.60295203]
+ [-0.7753637   0.25982344 -0.57558919]
+ [ 0.60295203  0.57558919 -0.55240015]]
+2024-11-12 02:02:23,259 INFO:R: [[ 0.14126494 -0.59413806 -0.79186122]
+ [-0.59413806  0.58893022 -0.54786966]
+ [ 0.79186122  0.54786966 -0.26980484]]
+2024-11-12 02:02:23,260 INFO:R: [[ 0.12359132 -0.63532346 -0.76229213]
+ [-0.63532346  0.53944329 -0.55259844]
+ [ 0.76229213  0.55259844 -0.33696539]]
+2024-11-12 02:02:23,260 INFO:R: [[ 0.38706018 -0.36997437 -0.8445729 ]
+ [-0.36997437  0.77668112 -0.50978957]
+ [ 0.8445729   0.50978957  0.1637413 ]]
+2024-11-12 02:02:23,261 INFO:R: [[ 0.33609171 -0.40243878 -0.85151946]
+ [-0.40243878  0.75605521 -0.51616233]
+ [ 0.85151946  0.51616233  0.09214692]]
+2024-11-12 02:02:23,262 INFO:R: [[ 0.19800134 -0.51334564 -0.83502797]
+ [-0.51334564  0.67141622 -0.53448715]
+ [ 0.83502797  0.53448715 -0.13058244]]
+2024-11-12 02:02:23,263 INFO:R: [[ 0.4437254  -0.3381657  -0.82991068]
+ [-0.3381657   0.7944252  -0.5045122 ]
+ [ 0.82991068  0.5045122   0.2381506 ]]
+2024-11-12 02:02:23,264 INFO:R: [[ 0.65973804 -0.22654188 -0.71653646]
+ [-0.22654188  0.84917143 -0.47706043]
+ [ 0.71653646  0.47706043  0.50890947]]
+2024-11-12 02:02:23,265 INFO:R: [[ 0.16405469 -0.55276375 -0.81703016]
+ [-0.55276375  0.63448833 -0.54025623]
+ [ 0.81703016  0.54025623 -0.20145698]]
+2024-11-12 02:02:23,265 INFO:R: [[ 0.49992964 -0.30725779 -0.80973021]
+ [-0.30725779  0.81121187 -0.49752181]
+ [ 0.80973021  0.49752181  0.31114151]]
+2024-11-12 02:02:23,266 INFO:R: [[ 0.71201052 -0.20223124 -0.6724162 ]
+ [-0.20223124  0.8579897  -0.47218239]
+ [ 0.6724162   0.47218239  0.57000021]]
+2024-11-12 02:02:23,267 INFO:R: [[ 0.75946457 -0.17964021 -0.62525432]
+ [-0.17964021  0.86583845 -0.46696164]
+ [ 0.62525432  0.46696164  0.62530302]]
+2024-11-12 02:02:23,268 INFO:R: [[ 0.80546012 -0.15799614 -0.57120156]
+ [-0.15799614  0.87168297 -0.46390303]
+ [ 0.57120156  0.46390303  0.67714308]]
+2024-11-12 02:02:23,269 INFO:R: [[ 0.91322789 -0.09975132 -0.39505   ]
+ [-0.09975132  0.88532808 -0.4541408 ]
+ [ 0.39505     0.4541408   0.79855597]]
+2024-11-12 02:02:23,271 INFO:R: [[ 0.94037239 -0.08135905 -0.33027333]
+ [-0.08135905  0.88898942 -0.45064234]
+ [ 0.33027333  0.45064234  0.82936181]]
+2024-11-12 02:02:23,272 INFO:R: [[ 0.96262054 -0.06368882 -0.26325926]
+ [-0.06368882  0.89148411 -0.44855303]
+ [ 0.26325926  0.44855303  0.85410464]]
+2024-11-12 02:02:23,272 INFO:R: [[ 0.9052934   0.10799679  0.4108291 ]
+ [ 0.10799679  0.876848   -0.46848082]
+ [-0.4108291   0.46848082  0.7821414 ]]
+2024-11-12 02:02:23,273 INFO:R: [[ 0.97300163  0.05472417  0.22421663]
+ [ 0.05472417  0.88907719 -0.45447444]
+ [-0.22421663  0.45447444  0.86207882]]
+2024-11-12 02:02:23,274 INFO:R: [[ 0.87341071  0.12793352  0.46987949]
+ [ 0.12793352  0.87070796 -0.4748691 ]
+ [-0.46987949  0.4748691   0.74411868]]
+2024-11-12 02:02:23,274 INFO:R: [[ 0.99988116  0.00353275  0.01500637]
+ [ 0.00353275  0.89498462 -0.446083  ]
+ [-0.01500637  0.446083    0.89486578]]
+2024-11-12 02:02:23,275 INFO:R: [[ 0.9961971   0.0200776   0.08478343]
+ [ 0.0200776   0.89399935 -0.44761819]
+ [-0.08478343  0.44761819  0.89019645]]
+2024-11-12 02:02:23,276 INFO:R: [[ 0.24805733  0.56235451  0.78881238]
+ [ 0.56235451  0.57943257 -0.58992821]
+ [-0.78881238  0.58992821 -0.1725101 ]]
+2024-11-12 02:02:23,276 INFO:R: [[ 0.83912853  0.14843288  0.52328863]
+ [ 0.14843288  0.86304396 -0.48282793]
+ [-0.52328863  0.48282793  0.70217249]]
+2024-11-12 02:02:23,277 INFO:R: [[ 0.96252971 -0.06389194 -0.26354197]
+ [-0.06389194  0.89105554 -0.44937495]
+ [ 0.26354197  0.44937495  0.85358525]]
+2024-11-12 02:02:23,278 INFO:R: [[ 0.91297959 -0.09976525 -0.39561997]
+ [-0.09976525  0.88562331 -0.45356173]
+ [ 0.39561997  0.45356173  0.7986029 ]]
+2024-11-12 02:02:23,278 INFO:R: [[ 0.66215222  0.24646131  0.70768019]
+ [ 0.24646131  0.82020549 -0.51625554]
+ [-0.70768019  0.51625554  0.48235771]]
+2024-11-12 02:02:23,279 INFO:R: [[ 0.80568712 -0.15755691 -0.5710027 ]
+ [-0.15755691  0.87224635 -0.46299258]
+ [ 0.5710027   0.46299258  0.67793347]]
+2024-11-12 02:02:23,279 INFO:R: [[ 0.98719973  0.03713973  0.1551043 ]
+ [ 0.03713973  0.89223987 -0.45003183]
+ [-0.1551043   0.45003183  0.8794396 ]]
+2024-11-12 02:02:23,280 INFO:R: [[ 0.22197807  0.68115675  0.69767559]
+ [ 0.68115675  0.40364854 -0.61081367]
+ [-0.69767559  0.61081367 -0.37437339]]
+2024-11-12 02:02:23,280 INFO:R: [[ 0.3213038   0.47530006  0.81905661]
+ [ 0.47530006  0.66714099 -0.57359633]
+ [-0.81905661  0.57359633 -0.0115552 ]]
+2024-11-12 02:02:23,281 INFO:R: [[ 0.56590565  0.30202817  0.76715694]
+ [ 0.30202817  0.78985901 -0.53376186]
+ [-0.76715694  0.53376186  0.35576466]]
+2024-11-12 02:02:23,282 INFO:R: [[ 0.27942008  0.51648611  0.80942357]
+ [ 0.51648611  0.62980109 -0.58016608]
+ [-0.80942357  0.58016608 -0.09077883]]
+2024-11-12 02:02:23,282 INFO:R: [[ 0.61609806  0.27371154  0.73858322]
+ [ 0.27371154  0.80485118 -0.52658956]
+ [-0.73858322  0.52658956  0.42094924]]
+2024-11-12 02:02:23,283 INFO:R: [[ 0.24480233  0.71622807  0.6535206 ]
+ [ 0.71622807  0.32073063 -0.61979772]
+ [-0.6535206   0.61979772 -0.43446704]]
+2024-11-12 02:02:23,283 INFO:R: [[ 0.27571783  0.74811263  0.60357864]
+ [ 0.74811263  0.22727284 -0.62343769]
+ [-0.60357864  0.62343769 -0.49700933]]
+2024-11-12 02:02:23,284 INFO:R: [[ 0.80955294  0.54369599  0.22140169]
+ [ 0.54369599 -0.55216536 -0.63206652]
+ [-0.22140169  0.63206652 -0.74261242]]
+2024-11-12 02:02:23,284 INFO:R: [[ 0.32794074  0.76976393  0.54764804]
+ [ 0.76976393  0.11832701 -0.62726567]
+ [-0.54764804  0.62726567 -0.55373226]]
+2024-11-12 02:02:23,285 INFO:R: [[ 0.70009841  0.65185793  0.29145061]
+ [ 0.65185793 -0.41686063 -0.63348911]
+ [-0.29145061  0.63348911 -0.71676222]]
+2024-11-12 02:02:23,286 INFO:R: [[ 0.90992599  0.38794988  0.14672962]
+ [ 0.38794988 -0.67090498 -0.6319663 ]
+ [-0.14672962  0.6319663  -0.76097899]]
+2024-11-12 02:02:23,287 INFO:R: [[ 0.58463189  0.72610696  0.36190363]
+ [ 0.72610696 -0.26931101 -0.63264545]
+ [-0.36190363  0.63264545 -0.68467912]]
+2024-11-12 02:02:23,288 INFO:R: [[ 0.97582888 -0.20583909 -0.07340486]
+ [-0.20583909 -0.75290695 -0.62510911]
+ [ 0.07340486  0.62510911 -0.77707807]]
+2024-11-12 02:02:23,289 INFO:R: [[ 0.90521118 -0.3984858  -0.14765426]
+ [-0.3984858  -0.67520746 -0.62072856]
+ [ 0.14765426  0.62072856 -0.76999628]]
+2024-11-12 02:02:23,290 INFO:R: [[ 0.80100573 -0.55652659 -0.22060821]
+ [-0.55652659 -0.55643595 -0.61697422]
+ [ 0.22060821  0.61697422 -0.75543023]]
+2024-11-12 02:02:23,290 INFO:R: [[ 0.67646259 -0.67591299 -0.29247222]
+ [-0.67591299 -0.41207277 -0.61101364]
+ [ 0.29247222  0.61101364 -0.73561018]]
+2024-11-12 02:02:23,291 INFO:R: [[ 0.32747821 -0.80648481 -0.49228069]
+ [-0.80648481  0.03286741 -0.59034057]
+ [ 0.49228069  0.59034057 -0.63965438]]
+2024-11-12 02:02:23,292 INFO:R: [[ 0.24705119 -0.79709997 -0.55099669]
+ [-0.79709997  0.15615995 -0.58330585]
+ [ 0.55099669  0.58330585 -0.59678886]]
+2024-11-12 02:02:23,292 INFO:R: [[ 0.1392101  -0.73998932 -0.65805497]
+ [-0.73998932  0.36385848 -0.56570559]
+ [ 0.65805497  0.56570559 -0.49693142]]
+2024-11-12 02:02:23,293 INFO:R: [[ 0.18777641 -0.7753637  -0.60295203]
+ [-0.7753637   0.25982344 -0.57558919]
+ [ 0.60295203  0.57558919 -0.55240015]]
+2024-11-12 02:02:23,293 INFO:R: [[ 0.14126494 -0.59413806 -0.79186122]
+ [-0.59413806  0.58893022 -0.54786966]
+ [ 0.79186122  0.54786966 -0.26980484]]
+2024-11-12 02:02:23,294 INFO:R: [[ 0.12359132 -0.63532346 -0.76229213]
+ [-0.63532346  0.53944329 -0.55259844]
+ [ 0.76229213  0.55259844 -0.33696539]]
+2024-11-12 02:02:23,295 INFO:R: [[ 0.38706018 -0.36997437 -0.8445729 ]
+ [-0.36997437  0.77668112 -0.50978957]
+ [ 0.8445729   0.50978957  0.1637413 ]]
+2024-11-12 02:02:23,295 INFO:R: [[ 0.33609171 -0.40243878 -0.85151946]
+ [-0.40243878  0.75605521 -0.51616233]
+ [ 0.85151946  0.51616233  0.09214692]]
+2024-11-12 02:02:23,296 INFO:R: [[ 0.19800134 -0.51334564 -0.83502797]
+ [-0.51334564  0.67141622 -0.53448715]
+ [ 0.83502797  0.53448715 -0.13058244]]
+2024-11-12 02:02:23,296 INFO:R: [[ 0.4437254  -0.3381657  -0.82991068]
+ [-0.3381657   0.7944252  -0.5045122 ]
+ [ 0.82991068  0.5045122   0.2381506 ]]
+2024-11-12 02:02:23,297 INFO:R: [[ 0.65973804 -0.22654188 -0.71653646]
+ [-0.22654188  0.84917143 -0.47706043]
+ [ 0.71653646  0.47706043  0.50890947]]
+2024-11-12 02:02:23,297 INFO:R: [[ 0.16405469 -0.55276375 -0.81703016]
+ [-0.55276375  0.63448833 -0.54025623]
+ [ 0.81703016  0.54025623 -0.20145698]]
+2024-11-12 02:02:23,298 INFO:R: [[ 0.49992964 -0.30725779 -0.80973021]
+ [-0.30725779  0.81121187 -0.49752181]
+ [ 0.80973021  0.49752181  0.31114151]]
+2024-11-12 02:02:23,298 INFO:R: [[ 0.71201052 -0.20223124 -0.6724162 ]
+ [-0.20223124  0.8579897  -0.47218239]
+ [ 0.6724162   0.47218239  0.57000021]]
+2024-11-12 02:02:23,299 INFO:R: [[ 0.75946457 -0.17964021 -0.62525432]
+ [-0.17964021  0.86583845 -0.46696164]
+ [ 0.62525432  0.46696164  0.62530302]]
+2024-11-12 02:02:23,299 INFO:R: [[ 0.80546012 -0.15799614 -0.57120156]
+ [-0.15799614  0.87168297 -0.46390303]
+ [ 0.57120156  0.46390303  0.67714308]]
+2024-11-12 02:02:23,300 INFO:R: [[ 0.91322789 -0.09975132 -0.39505   ]
+ [-0.09975132  0.88532808 -0.4541408 ]
+ [ 0.39505     0.4541408   0.79855597]]
+2024-11-12 02:02:23,301 INFO:R: [[ 0.94037239 -0.08135905 -0.33027333]
+ [-0.08135905  0.88898942 -0.45064234]
+ [ 0.33027333  0.45064234  0.82936181]]
+2024-11-12 02:02:23,301 INFO:R: [[ 0.96262054 -0.06368882 -0.26325926]
+ [-0.06368882  0.89148411 -0.44855303]
+ [ 0.26325926  0.44855303  0.85410464]]
