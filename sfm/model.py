@@ -8,6 +8,7 @@ import os
 from logger import Logger
 import open3d as o3d
 import matplotlib.pyplot as plt
+from scipy.spatial.transform import Rotation
 
 class Model: 
     def __init__(self, model_path: str, name: str, logger: Logger) -> None:
@@ -54,6 +55,8 @@ class Model:
                 image_id = struct.unpack("I", f.read(4))[0]
                 qvec = struct.unpack("4d", f.read(32))
                 tvec = struct.unpack("3d", f.read(24))
+                
+                    
                 camera_id = struct.unpack("I", f.read(4))[0]
                 name = ""
                 while True:
@@ -61,6 +64,7 @@ class Model:
                     if char == b'\x00':
                         break
                     name += char.decode("utf-8")
+                    
                 num_points2D = struct.unpack("Q", f.read(8))[0]
                 xys = []
                 point3D_ids = []
@@ -175,17 +179,27 @@ class Model:
         """
         camera_positions = []
         camera_directions = []
+        index = 0
         for image_id, data in self.images_bin.items():
             R = self.quaternion_to_rotation_matrix(data['qvec'])
-            t = np.array(data['tvec']).reshape((3, 1))
-            camera_position = - R @ t
-            camera_direction = R @ np.array([0, 0, 1])
+            t = np.array(data['tvec']).reshape((3, ))
+            
+            camera_position = - R.T @ t
+            camera_direction = R.T @ np.array([0, 0, 1])
             self.camera_pose.setdefault(data['name'], {
                 "position": camera_position,
                 "direction": camera_direction
             })
             camera_positions.append(camera_position)
             camera_directions.append(camera_direction)
+            if index == 0:
+                print(data['name'])
+                print("R ",R)
+                print("qvec ",data['qvec'])
+                print("tvec ",data['tvec'])
+                print("camera_position ",camera_position)
+                print("camera_direction ",camera_direction)
+                index += 1
         
         camera_positions = np.array(camera_positions)
         camera_directions = np.array(camera_directions)
@@ -216,9 +230,10 @@ class Model:
         """
         images_binを更新する
         """
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        name = ""
+        # fig = plt.figure()
+        # ax = fig.add_subplot(111, projection='3d')
+        # name = ""
+        index = 0
         for image_name, pose_data in self.camera_pose.items():
             name = image_name
             # カメラの位置と向き情報を取得
@@ -233,15 +248,28 @@ class Model:
                 rotation_axis = np.cross(z_axis, camera_direction)
                 rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)  # 正規化
                 rotation_angle = np.arccos(np.dot(z_axis, camera_direction) / (np.linalg.norm(z_axis) * np.linalg.norm(camera_direction)))
-                R, _ = cv2.Rodrigues(rotation_axis * rotation_angle)
+                R_matrix, _ = cv2.Rodrigues(rotation_axis * rotation_angle)
             else:
-                R = np.eye(3)  # z 軸と一致する場合は単位行列
+                R_matrix = np.eye(3)  # z軸と一致する場合は単位行列
 
             # 回転行列をクォータニオンに変換
-            qvec = quaternion.from_rotation_matrix(R)
+            qvec = quaternion.from_rotation_matrix(R_matrix)
 
             # 逆変換で並進ベクトル tvec を計算
-            tvec = - R.T @ camera_position
+            tvec = - R_matrix @ camera_position
+            if index == 0:
+                print("camera_direction ",camera_direction)
+                R = self.quaternion_to_rotation_matrix([qvec.w, qvec.x, qvec.y, qvec.z])
+                t = np.array(tvec.flatten().tolist()).reshape((3, ))
+                camera_position = - R.T @ t
+                camera_direction = R.T @ np.array([0, 0, 1])
+                print("name ",name)
+                print("R ",R)
+                print("qvec ",qvec)
+                print("tvec ",tvec)
+                print("camera_position ",camera_position)
+                print("camera_direction ",camera_direction)
+                index += 1
 
             # images_bin 内の該当する画像に位置と向きを設定
             for image_id, image_data in self.images_bin.items():
@@ -250,31 +278,31 @@ class Model:
                     image_data["tvec"] = tvec.flatten().tolist()  # 並進ベクトルをリストに変換して格納
                     break
             # break
-        camera_positions = []
-        camera_directions = []
-        for image_id, data in self.images_bin.items():
-            R = self.quaternion_to_rotation_matrix(data['qvec'])
-            t = np.array(data['tvec']).reshape((3, 1))
-            camera_position = - R @ t
-            camera_direction = R @ np.array([0, 0, 1])
-            self.camera_pose.setdefault(data['name'], {
-                "position": camera_position,
-                "direction": camera_direction
-            })
-            camera_positions.append(camera_position)
-            camera_directions.append(camera_direction)
-        for i in range(len(camera_positions)):
-            camera_position = camera_positions[i]
-            camera_direction = camera_directions[i]
-            ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-                        camera_direction[0], camera_direction[1], camera_direction[2],
-                        length=0.5, color="b")
+        # camera_positions = []
+        # camera_directions = []
+        # for image_id, data in self.images_bin.items():
+        #     R = self.quaternion_to_rotation_matrix(data['qvec'])
+        #     t = np.array(data['tvec']).reshape((3, 1))
+        #     camera_position = - R @ t
+        #     camera_direction = R @ np.array([0, 0, 1])
+        #     self.camera_pose.setdefault(data['name'], {
+        #         "position": camera_position,
+        #         "direction": camera_direction
+        #     })
+        #     camera_positions.append(camera_position)
+        #     camera_directions.append(camera_direction)
+        # for i in range(len(camera_positions)):
+        #     camera_position = camera_positions[i]
+        #     camera_direction = camera_directions[i]
+        #     ax.quiver(camera_position[0], camera_position[1], camera_position[2],
+        #                 camera_direction[0], camera_direction[1], camera_direction[2],
+        #                 length=0.5, color="b")
         
-        ax.set_box_aspect([1, 1, 1])
-        ax.set_xlim(-4, 4)
-        ax.set_ylim(-4, 4)
-        ax.set_zlim(-4, 4)
-        plt.show()
+        # ax.set_box_aspect([1, 1, 1])
+        # ax.set_xlim(-4, 4)
+        # ax.set_ylim(-4, 4)
+        # ax.set_zlim(-4, 4)
+        # plt.show()
     
     def update_points3d(self, R_init = None, t_init = None,mean = None, B_reg = None, t_reg = None) -> None:
         """

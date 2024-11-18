@@ -574,7 +574,14 @@ class ModelMerger:
             plt.show()   
 
     def merge_model (self):
+        index = 0
+        for pose in self.train_model.camera_pose:
+            self.train_model.camera_pose[pose]["position"] = self.train_camera_positions[index]
+            self.train_model.camera_pose[pose]["direction"] = self.train_camera_directions[index]
+            index += 1
+        self.train_model.update_images_bin()
         self.train_model.update_points3d(mean=self.train_mean)
+        self.train_model.pcd.points = o3d.utility.Vector3dVector(self.train_object_points)
         
         index = 0
         for pose in self.query_model.camera_pose:
@@ -583,19 +590,17 @@ class ModelMerger:
             index += 1
         self.query_model.update_images_bin()
         self.query_model.update_points3d(R_init=self.R_init, t_init=self.t_init,mean=self.query_mean, B_reg=self.B_reg, t_reg=self.t_reg)
-        
+        self.query_model.pcd.points = o3d.utility.Vector3dVector(self.query_object_points_transformed)
         
         self.new_model = Model( model_path=self.merge_model_path, name=self.merge_model_name, logger=self.logger)
         self.new_model.camera_positions =np.vstack([self.train_camera_positions, self.query_camera_positions_transformed])
         self.new_model.camera_directions = np.vstack([self.train_camera_directions, self.query_camera_directions_transformed])
         new_object_points = np.vstack([self.train_object_points, self.query_object_points_transformed])
-        self.new_model.pcd.points = o3d.utility.Vector3dVector(new_object_points)
+        self.new_model.pcd = self.train_model.pcd + self.query_model.pcd
         
         self.new_model.images_bin.update(self.train_model.images_bin)
         max_point_id = max(self.train_model.points3d.keys(), default=-1)
-        self.logger.info(f"Max Point ID: {max_point_id}")
         max_image_id = max(self.train_model.images_bin.keys(), default=-1)
-        self.logger.info(f"Max Image ID: {max_image_id}")
         for image_id, image_data in self.query_model.images_bin.items():
             new_image_id = max_image_id + image_id + 1
             new_point3D_ids = []
@@ -679,15 +684,21 @@ class ModelMerger:
         query_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["position"].squeeze(),
                                     self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["position"].squeeze(),
                                     self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["position"].squeeze()])
-        train_positions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["position"].squeeze()])
+        train_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["position"].squeeze()])
+        # train_positions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+        #                             self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+        #                             self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["position"].squeeze()])
         query_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
                                     self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
                                     self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
-        train_directions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
+        train_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
+        # train_directions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+        #                             self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+        #                             self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
         self.logger.info(f"Query Camera Positions: {query_positions}")
         self.logger.info(f"Train Camera Positions: {train_positions}")
         self.plot_poses(camera_positions_list=[train_positions, query_positions],

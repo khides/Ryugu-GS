@@ -1,30 +1,33 @@
-import quaternion
-import numpy as np
-import cv2
-def quaternion_to_rotation_matrix(q) -> np.ndarray:
-    q = np.quaternion(q[0], q[1], q[2], q[3])
-    return quaternion.as_rotation_matrix(q)
+from omegaconf import OmegaConf
+from sfm.model import Model
+from sfm.model_merger import ModelMerger
+from logger import Logger
+import datetime
+from notice import send_notification
 
-v = [ 0.4108291,  -0.46848082  ,0.7821414 ]
-print(f"v: {v}")
+def merge(logger: Logger, conf: OmegaConf) -> None:
+    query_model = Model(
+        model_path=conf.query_model_path,
+        name=conf.query_model_name,
+        logger=logger
+        ) # クエリモデルの読み込みs
+    query_model.read_model()  
+    query_model.update_images_bin()    
+    # query_model.write_model()
 
-z_axis = np.array([0, 0, 1])
-# カメラ方向が z 軸と異なる場合、回転行列 R を計算
-if not np.allclose(v, z_axis):
-    rotation_axis = np.cross(z_axis, v)
-    rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)  # 正規化
-    rotation_angle = np.arccos(np.dot(z_axis, v) / (np.linalg.norm(z_axis) * np.linalg.norm(v)))
-    R, _ = cv2.Rodrigues(rotation_axis * rotation_angle)
-    print(f"R: {R}")
-else:
-    R = np.eye(3)  # z 軸と一致する場合は単位行列
-# 回転行列をクォータニオンに変換
-qvec = quaternion.from_rotation_matrix(R)
-print(f"qvec: {qvec}")
 
-qvec = [qvec.w, qvec.x, qvec.y, qvec.z]
-print(f"qvec: {qvec}")
-R = quaternion_to_rotation_matrix(qvec)
-print(f"R: {R}")
-v = R @ np.array([0, 0, 1])
-print(f"v: {v}")
+
+
+if __name__ == "__main__":
+    with open("config.yaml", mode="r") as f:
+        conf = OmegaConf.load(f)
+    now = datetime.datetime.now(tz=datetime.timezone(datetime.timedelta(hours=9), 'JST')).strftime("%Y-%m-%d_%H-%M-%S")
+    logger = Logger(f"./log/{now}.log")  
+    send_notification(
+        file = __file__,
+        webhook_url=conf.webhook_url,
+        method=merge ,
+        logger = logger,
+        conf = conf
+        )
+
