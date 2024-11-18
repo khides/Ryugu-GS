@@ -684,23 +684,21 @@ class ModelMerger:
         query_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["position"].squeeze(),
                                     self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["position"].squeeze(),
                                     self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["position"].squeeze()])
-        train_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["position"].squeeze()])
-        # train_positions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-        #                             self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-        #                             self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["position"].squeeze()])
+        # train_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+        #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+        #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["position"].squeeze()])
+        train_positions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["position"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["position"].squeeze()])
         query_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
                                     self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
                                     self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
-        train_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
-        # train_directions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-        #                             self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-        #                             self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
-        self.logger.info(f"Query Camera Positions: {query_positions}")
-        self.logger.info(f"Train Camera Positions: {train_positions}")
+        # train_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+        #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+        #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
+        train_directions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
         self.plot_poses(camera_positions_list=[train_positions, query_positions],
                         camera_directions_list=[train_directions, query_directions],
                         label_list=[self.train_model.name, self.query_model.name],

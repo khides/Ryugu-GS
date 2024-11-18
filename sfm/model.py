@@ -240,15 +240,17 @@ class Model:
             camera_position = pose_data["position"].reshape((3, 1))
             camera_direction = pose_data["direction"].flatten()
             
-            # カメラの前方方向のベクトル（z軸）を定義
+           # カメラの前方方向のベクトル（z軸）を定義
             z_axis = np.array([0, 0, 1])
 
-            # カメラ方向が z 軸と異なる場合、回転行列 R を計算
+            # z軸と異なる場合、回転行列 R を計算
             if not np.allclose(camera_direction, z_axis):
-                rotation_axis = np.cross(z_axis, camera_direction)
-                rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)  # 正規化
-                rotation_angle = np.arccos(np.dot(z_axis, camera_direction) / (np.linalg.norm(z_axis) * np.linalg.norm(camera_direction)))
-                R_matrix, _ = cv2.Rodrigues(rotation_axis * rotation_angle)
+                rotation_axis = np.cross(camera_direction, z_axis)  # camera_direction -> z軸への回転軸
+                if np.linalg.norm(rotation_axis) > 0:  # 有効な回転軸のみ処理
+                    rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)  # 正規化
+                rotation_angle = np.arccos(np.dot(camera_direction, z_axis) /
+                                        (np.linalg.norm(camera_direction) * np.linalg.norm(z_axis)))
+                R_matrix, _ = cv2.Rodrigues(rotation_axis * rotation_angle)  # 逆回転用に軸を逆に設定
             else:
                 R_matrix = np.eye(3)  # z軸と一致する場合は単位行列
 
@@ -384,5 +386,5 @@ class Model:
         """
         self.write_images_to_bin()
         self.write_points3d_to_bin()
-        self.write_pcd_to_ply()
+        # self.write_pcd_to_ply()
         self.logger.info(f"Model {self.name} is written.")

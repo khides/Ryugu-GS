@@ -8,6 +8,10 @@
 #
 # For inquiries contact  george.drettakis@inria.fr
 #
+from notice import send_notification
+from omegaconf import OmegaConf
+
+
 
 import os
 import torch
@@ -222,4 +226,10 @@ def main():
     print("\nTraining complete.")
     
 if __name__ == "__main__":
-    main()
+    with open("../config.yaml", mode="r") as f:
+        conf = OmegaConf.load(f)
+    send_notification(
+        file = __file__,
+        webhook_url=conf.webhook_url,
+        method=main
+    )
