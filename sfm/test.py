@@ -6,14 +6,14 @@ import datetime
 from notice import send_notification
 
 def merge(logger: Logger, conf: OmegaConf) -> None:
-    query_model = Model(
-        model_path=conf.query_model_path,
-        name=conf.query_model_name,
+    train_model = Model(
+        model_path=conf.train_model_path,
+        name=conf.train_model_name,
         logger=logger
         ) # クエリモデルの読み込みs
-    query_model.read_model()  
-    query_model.update_images_bin()    
-    # query_model.write_model()
+    train_model.read_model()  
+    train_model.update_images_bin()    
+    # train_model.write_model()
 
 
 

@@ -13,7 +13,7 @@ from logger import Logger
 from sfm.model import Model
 import open3d as o3d
 from scipy.optimize import minimize
-from pycpd import AffineRegistration
+from pycpd import AffineRegistration, RigidRegistration
 from scipy.spatial.transform import Rotation as R
 
 class ModelMerger:
@@ -40,6 +40,7 @@ class ModelMerger:
         self.query_object_points_transformed: np.ndarray = None
         self.B_reg: np.ndarray = None
         self.t_reg: np.ndarray = None
+        self.s_reg: float = None
         self.query_object_points_down: np.ndarray = None
         self.train_object_points_down: np.ndarray = None
         self.query_object_points_down_transformed: np.ndarray = None
@@ -366,17 +367,28 @@ class ModelMerger:
         query = self.query_object_points_down_pretreeted
         train = self.train_object_points_down
         # CPDによるアフィン変換
-        reg = AffineRegistration(X=train, Y=query)
-        TY,(B_reg, t_reg) = reg.register()
+        # reg = AffineRegistration(X=train, Y=query)
+        # TY,(B_reg, t_reg) = reg.register()
+        # self.B_reg = B_reg
+        # self.t_reg = t_reg
+        reg = RigidRegistration(X=train, Y=query)
+        TY, (s, R, t) = reg.register()
+        
+        self.logger.info(f"Estimated R: {R}")
+        self.logger.info(f"Estimated t: {t}")
+        self.logger.info(f"Estimated s: {s}")
+        
         self.query_object_points_down_transformed = TY
         self.affine_matrix = np.eye(4)
+        self.B_reg = s * R
+        self.t_reg = t
+        self.s_reg = s
         # self.affine_matrix[:3, :3] = B_reg
         # self.affine_matrix[:3, 3] = t_reg
-        self.B_reg = B_reg
-        self.t_reg = t_reg
+        
         # self.logger.info(f"Estimated Affine Matrix: {self.affine_matrix}")
-        self.logger.info(f"Estimated B: {B_reg}")
-        self.logger.info(f"Estimated t: {t_reg}")
+        self.logger.info(f"Estimated B: {self.B_reg}")
+        self.logger.info(f"Estimated t: {self.t_reg}")
     
     def pretreet(self, query_positions: np.ndarray, train_positions: np.ndarray) -> None:
         '''
@@ -588,6 +600,7 @@ class ModelMerger:
             self.query_model.camera_pose[pose]["position"] = self.query_camera_positions_transformed[index]
             self.query_model.camera_pose[pose]["direction"] = self.query_camera_directions_transformed[index]
             index += 1
+        self.query_model.update_cameras_bin(scale=self.s_reg)
         self.query_model.update_images_bin()
         self.query_model.update_points3d(R_init=self.R_init, t_init=self.t_init,mean=self.query_mean, B_reg=self.B_reg, t_reg=self.t_reg)
         self.query_model.pcd.points = o3d.utility.Vector3dVector(self.query_object_points_transformed)
@@ -598,17 +611,29 @@ class ModelMerger:
         new_object_points = np.vstack([self.train_object_points, self.query_object_points_transformed])
         self.new_model.pcd = self.train_model.pcd + self.query_model.pcd
         
+        self.new_model.cameras_bin.update(self.train_model.cameras_bin)
+        max_camera_id = max(self.train_model.cameras_bin.keys(), default=-1)
+        for camera_id, camera_data in self.query_model.cameras_bin.items():
+            new_camera_id = max_camera_id + camera_id 
+            self.new_model.cameras_bin[new_camera_id] = {
+                "model": camera_data["model"],
+                "width": camera_data["width"],
+                "height": camera_data["height"],
+                "params": camera_data["params"]
+            }
+        
         self.new_model.images_bin.update(self.train_model.images_bin)
         max_point_id = max(self.train_model.points3d.keys(), default=-1)
         max_image_id = max(self.train_model.images_bin.keys(), default=-1)
         for image_id, image_data in self.query_model.images_bin.items():
-            new_image_id = max_image_id + image_id + 1
+            new_image_id = max_image_id + image_id 
             new_point3D_ids = []
             for point3D_id in image_data["point3D_ids"]:
                 new_point_id = point3D_id
                 if point3D_id != 18446744073709551615:
                     new_point_id = max_point_id + point3D_id + 1  # 新しいIDを設定
                 new_point3D_ids.append(new_point_id)
+            new_camera_id = max_camera_id + image_data["camera_id"]   # 新しいcamera_idを作成
             self.new_model.images_bin[new_image_id] = {
                 "qvec": image_data["qvec"],
                 "tvec": image_data["tvec"],

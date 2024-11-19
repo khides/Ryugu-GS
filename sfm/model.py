@@ -19,8 +19,10 @@ class Model:
         self.images_path = f"{model_path}/Input"
         self.points3d_path = f"{model_path}/sparse/0/points3D.bin"
         self.image_bin_path = f"{model_path}/sparse/0/images.bin"
+        self.camera_bin_path = f"{model_path}/sparse/0/cameras.bin"
         self.pcd_ply_path = f"{model_path}/sparse/0/points3D.ply"
         self.images_bin : dict = {}
+        self.cameras_bin: dict = {}
         self.images : list = None
         self.points3d: dict = {}
         self.keypoints: dict = None
@@ -43,6 +45,41 @@ class Model:
         """
         q = np.quaternion(q[0], q[1], q[2], q[3])
         return quaternion.as_rotation_matrix(q)
+    
+    def read_cameras_from_bin(self):
+        cameras = {}
+        with open(self.camera_bin_path, 'rb') as f:
+            # カメラの数を読み取る
+            num_cameras = struct.unpack('<Q', f.read(8))[0]            
+            for _ in range(num_cameras):
+                # カメラID
+                camera_id = struct.unpack('<I', f.read(4))[0]
+                
+                # モデルID（PINHOLEモデルを仮定）
+                model_id = struct.unpack('<I', f.read(4))[0]
+                models = ["SIMPLE_PINHOLE", "PINHOLE", "SIMPLE_RADIAL", "RADIAL", "OPENCV", "OPENCV_FISHEYE"]
+                model = models[model_id] if model_id < len(models) else f"Unknown({model_id})"
+                
+                # 幅と高さ
+                width = struct.unpack('<I', f.read(4))[0]
+                _ = struct.unpack('<I', f.read(4))[0]  # 無視される値
+                height = struct.unpack('<I', f.read(4))[0]
+                _ = struct.unpack('<I', f.read(4))[0]  # 無視される値
+                
+                # パラメータ（PINHOLEモデルの場合、fx, fy, cx, cyの4つを仮定）
+                num_params = 4
+                param_data = f.read(8 * num_params)
+                params = struct.unpack('<' + 'd' * num_params, param_data)
+                
+                # 結果を保存
+                cameras[camera_id] = {
+                    'model': model,
+                    'width': width,
+                    'height': height,
+                    'params': params,
+                }
+        self.cameras_bin = cameras
+        self.logger.info(f"Cameras are read. {self.cameras_bin}")
 
     def read_images_from_bin(self) -> None:
         """
@@ -216,6 +253,7 @@ class Model:
         """
         モデルを読み込む
         """
+        self.read_cameras_from_bin()
         self.read_images_from_bin()
         self.read_images_file()
         self.read_points3d_from_bin()
@@ -226,6 +264,15 @@ class Model:
         # self.get_feature_id_to_points3d_id()
         self.logger.info(f"Model {self.name} is read.")
         
+    def update_cameras_bin(self, scale: float) -> None:
+        """
+        cameras_binを更新する
+        """
+        for camera_id, camera_data in self.cameras_bin.items():
+            camera_data['width'] = int(round(camera_data['width'] * scale))
+            camera_data['height'] = int(round(camera_data['height'] * scale))
+            camera_data['params'] = [param * scale for param in camera_data['params']]
+    
     def update_images_bin(self) -> None:
         """
         images_binを更新する
@@ -372,6 +419,42 @@ class Model:
                         raise ValueError(f"point3D_id {point3D_id} is out of range for uint64")
                     
                     f.write(struct.pack("Q", point3D_id))
+    def write_cameras_bin(self):
+        os.makedirs(os.path.dirname(self.camera_bin_path), exist_ok=True)
+        # モデル名からモデルIDへのマッピング
+        models = {
+            "SIMPLE_PINHOLE": 0,
+            "PINHOLE": 1,
+            "SIMPLE_RADIAL": 2,
+            "RADIAL": 3,
+            "OPENCV": 4,
+            "OPENCV_FISHEYE": 5
+        }
+
+        with open(self.camera_bin_path, "wb") as f:
+            # カメラの数を書き込む（64ビット符号なし整数）
+            f.write(struct.pack('<Q', len(self.cameras_bin)))
+
+            for camera_id, camera_data in self.cameras_bin.items():
+                # カメラID（32ビット符号なし整数）
+                f.write(struct.pack('<I', camera_id))
+                
+                # モデルID（32ビット符号なし整数）
+                model_id = models.get(camera_data['model'], -1)
+                if model_id == -1:
+                    raise ValueError(f"Unknown camera model: {camera_data['model']}")
+                f.write(struct.pack('<I', model_id))
+                
+                # 幅と高さ（32ビット符号なし整数）
+                f.write(struct.pack('<I', camera_data['width']))
+                f.write(struct.pack('<I', 0))  # 予約領域（常に0）
+                f.write(struct.pack('<I', camera_data['height']))
+                f.write(struct.pack('<I', 0))  # 予約領域（常に0）
+                
+                # カメラパラメータ（64ビット浮動小数点数の配列）
+                params = camera_data['params']
+                num_params = len(params)
+                f.write(struct.pack('<' + 'd' * num_params, *params))
                 
     def write_pcd_to_ply(self) -> None:
         """
@@ -384,6 +467,7 @@ class Model:
         """
         モデルを書き込む
         """
+        self.write_cameras_bin()
         self.write_images_to_bin()
         self.write_points3d_to_bin()
         # self.write_pcd_to_ply()
