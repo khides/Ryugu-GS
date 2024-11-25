@@ -1,0 +1,5 @@
+2024-11-26 00:00:54,382 INFO:Model BOX-A_copy_json is read.
+2024-11-26 00:00:55,342 INFO:Camera poses JSON written to ./data_input/BOX-A_copy_json/transforms_test.json and ./data_input/BOX-A_copy_json/transforms_train.json
+2024-11-26 00:00:55,342 INFO:Model BOX-A_copy_json is written.
+2024-11-26 00:00:55,409 DEBUG:Starting new HTTPS connection (1): hooks.slack.com:443
+2024-11-26 00:00:56,081 DEBUG:https://hooks.slack.com:443 "POST /services/T07E6GGAV42/B07EVB20A7J/MbGu1qjLUbGBcXK3spDTzmiF HTTP/1.1" 200 6

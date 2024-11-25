@@ -253,6 +253,9 @@ class ModelMerger:
         
         camera_positions = self.query_camera_positions_pretreeted
         camera_directions = self.query_camera_directions_pretreeted
+        camera_ups = self.query_camera_ups_pretreeted
+        camera_rights = self.query_camera_rights_pretreeted
+        
         query_object_points = self.query_object_points_pretreeted
         # # アフィン変換の回転・スケーリング部分（3x3行列）と並進部分を分離
         # R_affine = self.affine_matrix[:3, :3]  # 回転・スケーリング行列
@@ -269,6 +272,12 @@ class ModelMerger:
         transformed_directions = np.dot(camera_directions, self.B_reg)
         transformed_directions_normalized = transformed_directions / np.linalg.norm(transformed_directions, axis=1, keepdims=True)
         
+        transformed_ups = np.dot(camera_ups, self.B_reg)
+        transformed_ups_normalized = transformed_ups / np.linalg.norm(transformed_ups, axis=1, keepdims=True)
+        
+        transformed_rights = np.dot(camera_rights, self.B_reg)
+        transformed_rights_normalized = transformed_rights / np.linalg.norm(transformed_rights, axis=1, keepdims=True)
+        
         # point3dに回転、スケール、平行移動を適用
         # query_object_points_homogeneous = np.hstack((query_object_points, np.ones((query_object_points.shape[0], 1))))
         # transformed_object_points = np.dot(query_object_points_homogeneous, self.affine_matrix.T) 
@@ -277,6 +286,8 @@ class ModelMerger:
         # 結果を保存
         self.query_camera_positions_transformed = transformed_positions  # (N, 3) の位置座標
         self.query_camera_directions_transformed = transformed_directions_normalized       # (N, 3) の方向ベクトル
+        self.query_camera_ups_transformed = transformed_ups_normalized
+        self.query_camera_rights_transformed = transformed_rights_normalized
         self.query_object_points_transformed = transformed_object_points[:,:3] # (N, 3) の3D点群
         
     def estimate_transformation_matrix_with_icp(self, threshold: float = 0.1) -> None:
@@ -442,6 +453,8 @@ class ModelMerger:
             camera_positions = self.query_model.camera_positions
         self.query_camera_positions_pretreeted = np.dot(camera_positions, self.R_init.T) + self.t_init  
         self.query_camera_directions_pretreeted = np.dot(self.query_model.camera_directions, self.R_init.T)
+        self.query_camera_ups_pretreeted = np.dot(self.query_model.camera_ups, self.R_init.T)
+        self.query_camera_rights_pretreeted = np.dot(self.query_model.camera_rights, self.R_init.T)
         
         if self.train_model.camera_positions.shape[-1] == 1:
             train_camera_positions = self.train_model.camera_positions.squeeze(-1)
@@ -454,6 +467,8 @@ class ModelMerger:
         self.train_object_points_down = self.train_object_points_down - self.train_mean
         self.train_camera_positions = train_camera_positions - self.train_mean
         self.train_camera_directions = self.train_model.camera_directions
+        self.train_camera_ups = self.train_model.camera_ups
+        self.train_camera_rights = self.train_model.camera_rights
         
         self.query_mean = np.mean(self.query_object_points_pretreeted, axis=0)
         # self.query_object_points = self.query_object_points - query_mean
@@ -586,77 +601,101 @@ class ModelMerger:
             plt.show()   
 
     def merge_model (self):
+        ## トレーニングモデルのカメラ位置、方向、3D点群を更新
         index = 0
         for pose in self.train_model.camera_pose:
             self.train_model.camera_pose[pose]["position"] = self.train_camera_positions[index]
             self.train_model.camera_pose[pose]["direction"] = self.train_camera_directions[index]
+            self.train_model.camera_pose[pose]["up"] = self.train_camera_ups[index]
+            self.train_model.camera_pose[pose]["right"] = self.train_camera_rights[index]
             index += 1
-        self.train_model.update_images_bin()
+        self.train_model.update_images_bin(mean=self.train_mean)
         self.train_model.update_points3d(mean=self.train_mean)
         self.train_model.pcd.points = o3d.utility.Vector3dVector(self.train_object_points)
         
+        ## クエリモデルのカメラ位置、方向、3D点群を更新
         index = 0
         for pose in self.query_model.camera_pose:
             self.query_model.camera_pose[pose]["position"] = self.query_camera_positions_transformed[index]
             self.query_model.camera_pose[pose]["direction"] = self.query_camera_directions_transformed[index]
+            self.query_model.camera_pose[pose]["up"] = self.query_camera_ups_transformed[index]
+            self.query_model.camera_pose[pose]["right"] = self.query_camera_rights_transformed[index]
             index += 1
-        self.query_model.update_cameras_bin(scale=self.s_reg)
-        self.query_model.update_images_bin()
+        # self.query_model.update_cameras_bin(scale=self.s_reg)
+        self.query_model.update_images_bin(R_init=self.R_init, t_init=self.t_init,mean=self.query_mean, B_reg=self.B_reg, t_reg=self.t_reg)
         self.query_model.update_points3d(R_init=self.R_init, t_init=self.t_init,mean=self.query_mean, B_reg=self.B_reg, t_reg=self.t_reg)
         self.query_model.pcd.points = o3d.utility.Vector3dVector(self.query_object_points_transformed)
         
+        ## モデルをマージ
         self.new_model = Model( model_path=self.merge_model_path, name=self.merge_model_name, logger=self.logger)
         self.new_model.camera_positions =np.vstack([self.train_camera_positions, self.query_camera_positions_transformed])
         self.new_model.camera_directions = np.vstack([self.train_camera_directions, self.query_camera_directions_transformed])
+        self.new_model.camera_ups = np.vstack([self.train_camera_ups, self.query_camera_ups_transformed])
+        self.new_model.camera_rights = np.vstack([self.train_camera_rights, self.query_camera_rights_transformed])
         new_object_points = np.vstack([self.train_object_points, self.query_object_points_transformed])
         self.new_model.pcd = self.train_model.pcd + self.query_model.pcd
         
         self.new_model.cameras_bin.update(self.train_model.cameras_bin)
-        max_camera_id = max(self.train_model.cameras_bin.keys(), default=-1)
+        max_camera_id = max(self.new_model.cameras_bin.keys(), default=0)
+        self.new_model.points3d.update(self.train_model.points3d)
+        max_point_id = max(self.new_model.points3d.keys(), default=0)
+        min_point_id = min(self.new_model.points3d.keys(), default=0)
+        self.new_model.images_bin.update(self.train_model.images_bin)
+        max_image_id = max(self.new_model.images_bin.keys(), default=0)
+        min_image_id = min(self.new_model.images_bin.keys(), default=0)
+        
         for camera_id, camera_data in self.query_model.cameras_bin.items():
             new_camera_id = max_camera_id + camera_id 
-            self.new_model.cameras_bin[new_camera_id] = {
-                "model": camera_data["model"],
-                "width": camera_data["width"],
-                "height": camera_data["height"],
-                "params": camera_data["params"]
-            }
+            if new_camera_id not in self.new_model.cameras_bin:                
+                self.new_model.cameras_bin[new_camera_id] = {
+                    "model": camera_data["model"],
+                    "width": camera_data["width"],
+                    "height": camera_data["height"],
+                    "params": camera_data["params"]
+                }
+            else :
+                self.logger.error(f"Camera ID {new_camera_id} is already exist.")
         
-        self.new_model.images_bin.update(self.train_model.images_bin)
-        max_point_id = max(self.train_model.points3d.keys(), default=-1)
-        max_image_id = max(self.train_model.images_bin.keys(), default=-1)
+        for point_id, point_data in self.query_model.points3d.items():
+            new_point_id = max_point_id + point_id 
+            new_track = []
+            for image_id, point2D_idx in point_data["track"]:
+                new_image_id = max_image_id + image_id  # 新しいimage_idを作成
+                new_track.append((new_image_id, point2D_idx))
+                
+            if new_point_id not in self.new_model.points3d:
+                # points3dに新しいエントリを追加し、trackと新しいpoint_idで更新
+                self.new_model.points3d[new_point_id] = {
+                    "xyz": point_data["xyz"],
+                    "rgb": point_data["rgb"],
+                    "error": point_data["error"],
+                    "track": new_track
+                }
+            else :
+                self.logger.error(f"Point ID {new_point_id} is already exist.")
+        
         for image_id, image_data in self.query_model.images_bin.items():
             new_image_id = max_image_id + image_id 
             new_point3D_ids = []
             for point3D_id in image_data["point3D_ids"]:
                 new_point_id = point3D_id
                 if point3D_id != 18446744073709551615:
-                    new_point_id = max_point_id + point3D_id + 1  # 新しいIDを設定
+                    new_point_id = max_point_id + point3D_id   # 新しいIDを設定
                 new_point3D_ids.append(new_point_id)
             new_camera_id = max_camera_id + image_data["camera_id"]   # 新しいcamera_idを作成
-            self.new_model.images_bin[new_image_id] = {
-                "qvec": image_data["qvec"],
-                "tvec": image_data["tvec"],
-                "camera_id": image_data["camera_id"],
-                "name": image_data["name"],
-                "xys": image_data["xys"],
-                "point3D_ids": new_point3D_ids
-            }
-        self.new_model.points3d.update(self.train_model.points3d)
-        for point_id, point_data in self.query_model.points3d.items():
-            new_point_id = max_point_id + point_id + 1
-            new_track = []
-            for image_id, point2D_idx in point_data["track"]:
-                new_image_id = max_image_id + image_id + 1  # 新しいimage_idを作成
-                new_track.append((new_image_id, point2D_idx))
-
-            # points3dに新しいエントリを追加し、trackと新しいpoint_idで更新
-            self.new_model.points3d[new_point_id] = {
-                "xyz": point_data["xyz"],
-                "rgb": point_data["rgb"],
-                "error": point_data["error"],
-                "track": new_track
-            }
+            if new_image_id not in self.new_model.images_bin:
+                self.new_model.images_bin[new_image_id] = {
+                    "qvec": image_data["qvec"],
+                    "tvec": image_data["tvec"],
+                    "camera_id": new_camera_id,
+                    "name": image_data["name"],
+                    "xys": image_data["xys"],
+                    "point3D_ids": new_point3D_ids
+                }
+            else :
+                self.logger.error(f"Image ID {new_image_id} is already exist.")
+        
+        # self.new_model.generate_camera_poses_json()
         self.new_model.write_model()
         self.logger.info(f"Model Merged: {self.new_model.name}")
 
@@ -706,24 +745,24 @@ class ModelMerger:
                          )
         
         ## pretreetment
-        query_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["position"].squeeze()])
-        # train_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-        #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-        #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["position"].squeeze()])
-        train_positions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["position"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["position"].squeeze()])
-        query_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
-        # train_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-        #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-        #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
-        train_directions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.jpeg"]["direction"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.jpeg"]["direction"].squeeze()])
+        query_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_072322_tvf_l2a.fit.png"]["position"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["position"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["position"].squeeze()])
+        # train_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.png"]["position"].squeeze(),
+        #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["position"].squeeze(),
+        #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["position"].squeeze()])
+        train_positions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.png"]["position"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.png"]["position"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.png"]["position"].squeeze()])
+        query_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_072322_tvf_l2a.fit.png"]["direction"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["direction"].squeeze(),
+                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["direction"].squeeze()])
+        # train_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.png"]["direction"].squeeze(),
+        #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["direction"].squeeze(),
+        #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["direction"].squeeze()])
+        train_directions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.png"]["direction"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.png"]["direction"].squeeze(),
+                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.png"]["direction"].squeeze()])
         self.plot_poses(camera_positions_list=[train_positions, query_positions],
                         camera_directions_list=[train_directions, query_directions],
                         label_list=[self.train_model.name, self.query_model.name],

@@ -9,6 +9,9 @@ from logger import Logger
 import open3d as o3d
 import matplotlib.pyplot as plt
 from scipy.spatial.transform import Rotation
+from sklearn.model_selection import train_test_split
+import shutil
+import json
 
 class Model: 
     def __init__(self, model_path: str, name: str, logger: Logger) -> None:
@@ -16,7 +19,7 @@ class Model:
         self.logger = logger
         self.model_paah = model_path
         self.db_path = f"{model_path}/database.db"
-        self.images_path = f"{model_path}/Input"
+        self.images_path = f"{model_path}/images"
         self.points3d_path = f"{model_path}/sparse/0/points3D.bin"
         self.image_bin_path = f"{model_path}/sparse/0/images.bin"
         self.camera_bin_path = f"{model_path}/sparse/0/cameras.bin"
@@ -33,6 +36,14 @@ class Model:
         self.camera_pose: dict = {}
         self.camera_positions: np.ndarray = None
         self.camera_directions: np.ndarray = None
+        self.camera_ups: np.ndarray = None
+        self.camera_rights: np.ndarray = None
+        self.train_json: dict = None
+        self.test_json: dict = None
+        self.train_path = f"{model_path}/train"
+        self.test_path = f"{model_path}/test"
+        self.train_json_path = f"{model_path}/transforms_train.json"
+        self.test_json_path = f"{model_path}/transforms_test.json"
 
     def quaternion_to_rotation_matrix(self, q: Any) -> np.ndarray:
         """
@@ -79,7 +90,7 @@ class Model:
                     'params': params,
                 }
         self.cameras_bin = cameras
-        self.logger.info(f"Cameras are read. {self.cameras_bin}")
+        # self.logger.info(f"Cameras are read. {self.cameras_bin}")
 
     def read_images_from_bin(self) -> None:
         """
@@ -117,6 +128,7 @@ class Model:
                     "point3D_ids": point3D_ids
                 }
         self.images_bin = images
+        # self.logger.info(f"Images are read. {self.images_bin}")
         self.read_camera_poses_from_images()
     
     def read_images_file(self) -> None:
@@ -216,6 +228,8 @@ class Model:
         """
         camera_positions = []
         camera_directions = []
+        camera_ups = []
+        camera_rights = []
         index = 0
         for image_id, data in self.images_bin.items():
             R = self.quaternion_to_rotation_matrix(data['qvec'])
@@ -223,25 +237,24 @@ class Model:
             
             camera_position = - R.T @ t
             camera_direction = R.T @ np.array([0, 0, 1])
+            camera_up = R.T @ np.array([0, -1, 0])
+            camera_right = R.T @ np.array([1, 0, 0])
+            
             self.camera_pose.setdefault(data['name'], {
                 "position": camera_position,
-                "direction": camera_direction
+                "direction": camera_direction,
+                "up": camera_up,
+                "right": camera_right
             })
             camera_positions.append(camera_position)
             camera_directions.append(camera_direction)
-            if index == 0:
-                print(data['name'])
-                print("R ",R)
-                print("qvec ",data['qvec'])
-                print("tvec ",data['tvec'])
-                print("camera_position ",camera_position)
-                print("camera_direction ",camera_direction)
-                index += 1
+            camera_ups.append(camera_up)
+            camera_rights.append(camera_right)
         
-        camera_positions = np.array(camera_positions)
-        camera_directions = np.array(camera_directions)
-        self.camera_positions = camera_positions
-        self.camera_directions = camera_directions
+        self.camera_positions = np.array(camera_positions)
+        self.camera_directions = np.array(camera_directions)
+        self.camera_ups = np.array(camera_ups)
+        self.camera_rights = np.array(camera_rights)
     
     def read_pcd_from_ply(self) -> None:
         """
@@ -273,52 +286,64 @@ class Model:
             camera_data['height'] = int(round(camera_data['height'] * scale))
             camera_data['params'] = [param * scale for param in camera_data['params']]
     
-    def update_images_bin(self) -> None:
+    def update_images_bin(self, R_init = None, t_init = None,mean = None, B_reg = None, t_reg = None) -> None:
         """
         images_binを更新する
         """
-        # fig = plt.figure()
-        # ax = fig.add_subplot(111, projection='3d')
-        # name = ""
-        index = 0
+        # for image_id, image_data in self.images_bin.items():
+        #     # qvec と tvec を取得
+        #     qvec = np.quaternion(image_data["qvec"][0], image_data["qvec"][1], image_data["qvec"][2], image_data["qvec"][3])
+        #     tvec = np.array(image_data["tvec"]).reshape(-1, 1)  # 必ず (3, 1) に整形
+
+        #     # 初期回転と並進の適用
+        #     # if R_init is not None and t_init is not None:
+        #     #     qrot_init = quaternion.from_rotation_matrix(R_init)
+        #     #     qvec = qrot_init * qvec  # 四元数の回転を適用
+        #     #     tvec = R_init @ tvec + t_init.reshape(-1, 1)  # 並進を適用
+
+        #     # # 平均減算
+        #     # if mean is not None:
+        #     #     tvec = tvec - mean.reshape(-1, 1)
+
+        #     # 正規化変換の適用
+        #     # if B_reg is not None and t_reg is not None:
+        #     #     qrot_reg = quaternion.from_rotation_matrix(B_reg)
+        #     #     qvec = qrot_reg * qvec  # 四元数の回転を適用
+        #     #     tvec = B_reg @ tvec + t_reg.reshape(-1, 1)  # 並進を適用
+
+        #     # 結果を保存
+        #     image_data["qvec"] = [qvec.w, qvec.x, qvec.y, qvec.z]  # クォータニオンをリスト形式で保存
+        #     image_data["tvec"] = tvec.flatten().tolist()  # tvec を 1 次元リストに変換して保存
+            
         for image_name, pose_data in self.camera_pose.items():
-            name = image_name
             # カメラの位置と向き情報を取得
             camera_position = pose_data["position"].reshape((3, 1))
             camera_direction = pose_data["direction"].flatten()
+            camera_up = pose_data["up"].flatten()
+            camera_right = pose_data["right"].flatten()
+            
+            # 回転行列 R を計算
+            R_matrix = np.array([camera_right, -camera_up, camera_direction])  # (3, 3) 行列
             
            # カメラの前方方向のベクトル（z軸）を定義
-            z_axis = np.array([0, 0, 1])
+            # z_axis = np.array([0, 0, 1])
 
-            # z軸と異なる場合、回転行列 R を計算
-            if not np.allclose(camera_direction, z_axis):
-                rotation_axis = np.cross(camera_direction, z_axis)  # camera_direction -> z軸への回転軸
-                if np.linalg.norm(rotation_axis) > 0:  # 有効な回転軸のみ処理
-                    rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)  # 正規化
-                rotation_angle = np.arccos(np.dot(camera_direction, z_axis) /
-                                        (np.linalg.norm(camera_direction) * np.linalg.norm(z_axis)))
-                R_matrix, _ = cv2.Rodrigues(rotation_axis * rotation_angle)  # 逆回転用に軸を逆に設定
-            else:
-                R_matrix = np.eye(3)  # z軸と一致する場合は単位行列
+            # # z軸と異なる場合、回転行列 R を計算
+            # if not np.allclose(camera_direction, z_axis):
+            #     rotation_axis = np.cross(camera_direction, z_axis)  # camera_direction -> z軸への回転軸
+            #     if np.linalg.norm(rotation_axis) > 0:  # 有効な回転軸のみ処理
+            #         rotation_axis = rotation_axis / np.linalg.norm(rotation_axis)  # 正規化
+            #     rotation_angle = np.arccos(np.dot(camera_direction, z_axis) /
+            #                             (np.linalg.norm(camera_direction) * np.linalg.norm(z_axis)))
+            #     R_matrix, _ = cv2.Rodrigues(rotation_axis * rotation_angle)  # 逆回転用に軸を逆に設定
+            # else:
+            #     R_matrix = np.eye(3)  # z軸と一致する場合は単位行列
 
             # 回転行列をクォータニオンに変換
             qvec = quaternion.from_rotation_matrix(R_matrix)
 
             # 逆変換で並進ベクトル tvec を計算
             tvec = - R_matrix @ camera_position
-            if index == 0:
-                print("camera_direction ",camera_direction)
-                R = self.quaternion_to_rotation_matrix([qvec.w, qvec.x, qvec.y, qvec.z])
-                t = np.array(tvec.flatten().tolist()).reshape((3, ))
-                camera_position = - R.T @ t
-                camera_direction = R.T @ np.array([0, 0, 1])
-                print("name ",name)
-                print("R ",R)
-                print("qvec ",qvec)
-                print("tvec ",tvec)
-                print("camera_position ",camera_position)
-                print("camera_direction ",camera_direction)
-                index += 1
 
             # images_bin 内の該当する画像に位置と向きを設定
             for image_id, image_data in self.images_bin.items():
@@ -326,33 +351,7 @@ class Model:
                     image_data["qvec"] = [qvec.w, qvec.x, qvec.y, qvec.z]  # クォータニオンをリスト形式で格納
                     image_data["tvec"] = tvec.flatten().tolist()  # 並進ベクトルをリストに変換して格納
                     break
-            # break
-        # camera_positions = []
-        # camera_directions = []
-        # for image_id, data in self.images_bin.items():
-        #     R = self.quaternion_to_rotation_matrix(data['qvec'])
-        #     t = np.array(data['tvec']).reshape((3, 1))
-        #     camera_position = - R @ t
-        #     camera_direction = R @ np.array([0, 0, 1])
-        #     self.camera_pose.setdefault(data['name'], {
-        #         "position": camera_position,
-        #         "direction": camera_direction
-        #     })
-        #     camera_positions.append(camera_position)
-        #     camera_directions.append(camera_direction)
-        # for i in range(len(camera_positions)):
-        #     camera_position = camera_positions[i]
-        #     camera_direction = camera_directions[i]
-        #     ax.quiver(camera_position[0], camera_position[1], camera_position[2],
-        #                 camera_direction[0], camera_direction[1], camera_direction[2],
-        #                 length=0.5, color="b")
         
-        # ax.set_box_aspect([1, 1, 1])
-        # ax.set_xlim(-4, 4)
-        # ax.set_ylim(-4, 4)
-        # ax.set_zlim(-4, 4)
-        # plt.show()
-    
     def update_points3d(self, R_init = None, t_init = None,mean = None, B_reg = None, t_reg = None) -> None:
         """
         points3dを更新する
@@ -372,6 +371,94 @@ class Model:
         for i, (point_id, point_data) in enumerate(self.points3d.items()):
             point_data["xyz"] = tuple(transformed_xyz[i])  # 更新
             
+    def generate_camera_poses_json(self):
+        """
+        Generates a JSON structure containing camera poses.
+        """
+         # カメラの内部パラメータ
+        fx = 9231  # 水平方向の焦点距離
+        fy = 9231  # 垂直方向の焦点距離 (ここでは使用しない)
+        cx = 512   # 水平方向のセンサー中心
+        cy = 512   # 垂直方向のセンサー中心 (ここでは使用しない)
+        # 水平画角の計算
+        camera_angle_x = 2 * np.arctan(cx / fx)
+
+        def create_transform_matrix(qvec, tvec):
+            """
+            Creates a 4x4 transformation matrix from a quaternion and translation vector.
+            """
+            rotation_matrix = self.quaternion_to_rotation_matrix(qvec)
+            transform_matrix = np.eye(4)
+            transform_matrix[:3, :3] = rotation_matrix
+            transform_matrix[:3, 3] = tvec
+            return transform_matrix
+        def create_camera_pose(input_data, mode="train"):
+            """
+            Creates a camera pose JSON object.
+            """
+            frames = []
+            for entry in input_data:
+                file_path = entry["name"]
+                qvec = entry["qvec"]
+                tvec = entry["tvec"]
+
+                # Compute the transformation matrix
+                transform_matrix = create_transform_matrix(qvec, tvec).tolist()
+                if mode == "train":
+                    file_path = f"./train/{file_path}".rpartition('.')[0]
+                else:
+                    file_path = f"./test/{file_path}".rpartition('.')[0]
+
+                frame = {
+                    "file_path":file_path,
+                    "transform_matrix": transform_matrix
+                }
+                frames.append(frame)
+
+            camera_poses = {
+                "camera_angle_x": camera_angle_x,
+                "frames": frames
+            }
+            return camera_poses
+        def copy_images_to_split_dirs( train_data, test_data):
+            """
+            Copies images from the source directory to train and test directories based on split.
+            """
+            for entry in self.images_bin.values():
+                src_path = os.path.join(self.images_path, os.path.basename(entry["name"]))
+                if not os.path.exists(src_path):
+                    self.logger.warning(f"Warning: {src_path} does not exist.")
+                    continue
+                
+                # Determine destination directory
+                if entry in train_data:
+                    dest_dir = self.train_path
+                else:
+                    dest_dir = self.test_path
+                
+                # Create destination directory if it doesn't exist
+                os.makedirs(dest_dir, exist_ok=True)
+
+                # Copy the image
+                dest_path = os.path.join(dest_dir, os.path.basename(entry["name"]))
+                shutil.copy(src_path, dest_path)
+                # print(f"Copied {src_path} to {dest_path}")
+
+        train_data, test_data = train_test_split(list(self.images_bin.values()), test_size=0.2, random_state=42)
+        copy_images_to_split_dirs( train_data, test_data)
+        self.train_json = create_camera_pose(train_data, mode="train")
+        self.test_json = create_camera_pose(test_data, mode="test") 
+    
+    def write_camera_poses_json(self):
+        """
+        Writes the camera poses JSON to a file.
+        """
+        with open(self.test_json_path, "w") as f:
+            json.dump(self.test_json, f, indent=4)
+        with open(self.train_json_path, "w") as f:
+            json.dump(self.train_json, f, indent=4)
+        self.logger.info(f"Camera poses JSON written to {self.test_json_path} and {self.train_json_path}")
+ 
     def write_points3d_to_bin(self) -> None:
         """
         points3D.binにself.points3dの内容を書き込む
@@ -419,6 +506,7 @@ class Model:
                         raise ValueError(f"point3D_id {point3D_id} is out of range for uint64")
                     
                     f.write(struct.pack("Q", point3D_id))
+    
     def write_cameras_bin(self):
         os.makedirs(os.path.dirname(self.camera_bin_path), exist_ok=True)
         # モデル名からモデルIDへのマッピング
@@ -470,5 +558,8 @@ class Model:
         self.write_cameras_bin()
         self.write_images_to_bin()
         self.write_points3d_to_bin()
+        # self.write_camera_poses_json()
         # self.write_pcd_to_ply()
         self.logger.info(f"Model {self.name} is written.")
+        
+    

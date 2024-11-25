@@ -5,15 +5,14 @@ from logger import Logger
 import datetime
 from notice import send_notification
 
-def merge(logger: Logger, conf: OmegaConf) -> None:
+def main(logger: Logger, conf: OmegaConf) -> None:
     train_model = Model(
         model_path=conf.train_model_path,
         name=conf.train_model_name,
         logger=logger
         ) # クエリモデルの読み込みs
     train_model.read_model()  
-    train_model.update_images_bin()    
-    # train_model.update_points3d()
+    train_model.generate_camera_poses_json()
     train_model.write_model()
 
 
@@ -27,7 +26,7 @@ if __name__ == "__main__":
     send_notification(
         file = __file__,
         webhook_url=conf.webhook_url,
-        method=merge ,
+        method=main ,
         logger = logger,
         conf = conf
         )
