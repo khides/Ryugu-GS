@@ -1,46 +1,21 @@
-# 3D-gaussian-splatting
-## コンテナ名
-- name: `intelligent_solomon`
-- id: `5ccb89a1a9ea`
+# Ryugu-GS
 
-### Dockerコンテナ作成
-- `docker build -t gaussian_splatting .`
-- `docker run --gpus all -it gaussian_splatting`
+This repository utilizes the Gaussian Splatting implementation from the following source:
 
-### コンテナ内でAnaconda環境の作成
-- `cd gaussian-splatting`
-- `conda env create --file environment.yml`
-- `conda activate gaussian_splatting`
+- Original Repository: [Gaussian Splatting GitHub](https://github.com/graphdeco-inria/gaussian-splatting)
+- License: The Gaussian Splatting code is distributed under the terms specified in its `LICENSE` file, located in the `gaussian-splatting/` directory.
 
-### 学習の実行
-- `python train.py -s ../nerf_blender_qiita`
+## Modifications and Additions
 
-### 結果をコピー
-- `ls -tl`で更新が最も新しいものをコピーする
+1. Added a wrapper for Slack notifications to the training script (`train.py`).
+2. Included configuration management through `config.yaml`.
+3. Additional scripts for processing asteroid observation data.
 
-- `docker cp 5ccb89a1a9ea:/home/developer/3D-gaussian-splatting/output /home/hideshima/3D-gaussian-splatting`
+## License
 
-または
-- `docker cp 5ccb89a1a9ea:/home/developer/3D-gaussian-splatting/gaussian-splatting/output /home/hideshima/3D-gaussian-splatting`
+This repository contains two distinct parts:
 
-### 結果を表示
-- `.\viewers\bin\SIBR_gaussianViewer_app.exe -m .\output\[新しいファイル]`
+1. **Gaussian Splatting Code**: Licensed under the terms specified by Inria and Max Planck Institut for Informatik, located in the `gaussian-splatting/` directory.
+2. **Custom Additions**: Modifications and additional scripts provided in this repository are distributed under the MIT License.
 
-### コンテナ外の変更をコンテナ内に反映
-- `docker cp /home/hideshima/3D-gaussian-splatting [コンテナid]:/home/developer`
-
-### コンテナIDを取得する
-- `docker info -e`
-
-### コンテナをストップする
-- `docker stop [コンテナid]`
-
-### コンテナを再起動する
-- `docker start [コンテナid]`
-- `docker exec -it [コンテナid] /bin/bash`
-
-### コンテナを削除する
-- `docker rm [コンテナid]`
-
-### データを生成
-- `python convert.py --colmap_executable "D:\GoogleDrive\ProgramFiles\Colmap\COLMAP.bat" -s E:\Git\lileaLab\GaussianSplatting\Data`
+For details about the Gaussian Splatting license, please refer to the `LICENSE` file in the `gaussian-splatting/` directory.
