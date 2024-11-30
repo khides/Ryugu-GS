@@ -745,87 +745,111 @@ class ModelMerger:
                          )
         
         ## pretreetment
-        query_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_072322_tvf_l2a.fit.png"]["position"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["position"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["position"].squeeze()])
-        # train_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.png"]["position"].squeeze(),
-        #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["position"].squeeze(),
-        #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["position"].squeeze()])
-        train_positions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.png"]["position"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.png"]["position"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.png"]["position"].squeeze()])
-        query_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_072322_tvf_l2a.fit.png"]["direction"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["direction"].squeeze(),
-                                    self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["direction"].squeeze()])
-        # train_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.png"]["direction"].squeeze(),
-        #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["direction"].squeeze(),
-        #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["direction"].squeeze()])
-        train_directions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.png"]["direction"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.png"]["direction"].squeeze(),
-                                    self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.png"]["direction"].squeeze()])
-        self.plot_poses(camera_positions_list=[train_positions, query_positions],
-                        camera_directions_list=[train_directions, query_directions],
-                        label_list=[self.train_model.name, self.query_model.name],
-                        color_list=['r', 'b'],
-                        title="base Camera Poses of pretreetment",
-                        show_plot=show_plot,
-                        save_plot=False)
+        if estimate_type == "cpd":       
+            query_positions = np.array([self.query_model.camera_pose["r_019.png"]["position"].squeeze(),
+                                        self.query_model.camera_pose["r_020.png"]["position"].squeeze(),
+                                        self.query_model.camera_pose["r_021.png"]["position"].squeeze()])
+            train_positions = np.array([self.train_model.camera_pose["r_019.png"]["position"].squeeze(),
+                                        self.train_model.camera_pose["r_020.png"]["position"].squeeze(),
+                                        self.train_model.camera_pose["r_021.png"]["position"].squeeze()])
+            query_directions = np.array([self.query_model.camera_pose["r_019.png"]["direction"].squeeze(),
+                                        self.query_model.camera_pose["r_020.png"]["direction"].squeeze(),
+                                        self.query_model.camera_pose["r_021.png"]["direction"].squeeze()])
+            train_directions = np.array([self.train_model.camera_pose["r_019.png"]["direction"].squeeze(),
+                                        self.train_model.camera_pose["r_020.png"]["direction"].squeeze(),
+                                        self.train_model.camera_pose["r_021.png"]["direction"].squeeze()])
+                 
+            # query_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_072322_tvf_l2a.fit.png"]["position"].squeeze(),
+            #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["position"].squeeze(),
+            #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["position"].squeeze()])
+            # # train_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.png"]["position"].squeeze(),
+            # #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["position"].squeeze(),
+            # #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["position"].squeeze()])
+            # train_positions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.png"]["position"].squeeze(),
+            #                             self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.png"]["position"].squeeze(),
+            #                             self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.png"]["position"].squeeze()])
+            # query_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_072322_tvf_l2a.fit.png"]["direction"].squeeze(),
+            #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["direction"].squeeze(),
+            #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["direction"].squeeze()])
+            # # train_directions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_073628_tvf_l2a.fit.png"]["direction"].squeeze(),
+            # #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["direction"].squeeze(),
+            # #                             self.query_model.camera_pose["hyb2_onc_20180824_095602_tvf_l2a.fit.png"]["direction"].squeeze()])
+            # train_directions = np.array([self.train_model.camera_pose["hyb2_onc_20180710_060508_tvf_l2a.fit.png"]["direction"].squeeze(),
+            #                             self.train_model.camera_pose["hyb2_onc_20180710_064228_tvf_l2a.fit.png"]["direction"].squeeze(),
+            #                             self.train_model.camera_pose["hyb2_onc_20180710_073100_tvf_l2a.fit.png"]["direction"].squeeze()])
+            self.plot_poses(camera_positions_list=[train_positions, query_positions],
+                            camera_directions_list=[train_directions, query_directions],
+                            label_list=[self.train_model.name, self.query_model.name],
+                            color_list=['r', 'b'],
+                            title="base Camera Poses of pretreetment",
+                            show_plot=show_plot,
+                            save_plot=False)
+        
+        if estimate_type == "cpd":            
+            # ダウンサンプリングで点群を軽量化
+            self.voxel_down_sample(voxel_size=0.0001, distance_threshold=1.0)
             
-        # ダウンサンプリングで点群を軽量化
-        self.voxel_down_sample(voxel_size=0.01, distance_threshold=1.0e-5)
-        
-        # Pretreetment
-        self.pretreet(query_positions=query_positions, train_positions=train_positions)
-        transformed_query_positions = np.dot(query_positions, self.R_init.T) + self.t_init
-        trainformed_query_directions = np.dot(query_directions, self.R_init.T)
-        self.plot_poses(camera_positions_list=[train_positions, transformed_query_positions],
-                        camera_directions_list=[train_directions, trainformed_query_directions],
-                        label_list=[self.train_model.name, self.query_model.name],
-                        color_list=['r', 'b'],
-                        title="Pretreeted matched Camera Poses",
-                        show_plot=show_plot,
-                        save_plot=False)
-        self.plot_points(points_list=[self.train_object_points_down],
-                         label_list=[self.train_model.name],
-                         color_list=['r'],
-                         title="Train Object Points down sampled",
-                         show_plot=show_plot,
-                         save_plot=False,
-                         scale=0.3,
-                        #  scale=1,
-                        #  center=[0.7,-0.3,0.3]
-                        # center=[-1, 0,1]
-                        )
-        self.plot_points(points_list=[self.query_object_points_down_pretreeted],
-                         label_list=[self.query_model.name],
-                         color_list=['b'],
-                         title="Pretreeted matched Query Object Points down sampled",
-                         show_plot=show_plot,
-                         save_plot=False,
-                         scale=0.3,
-                        #  scale=1,
-                        #  center=[0.7,-0.3,0.3]
-                        # center=[-1, 0,1]
-                        )
-        self.plot_points(points_list=[self.train_object_points_down, self.query_object_points_down_pretreeted],
-                         label_list=[self.train_model.name, self.query_model.name],
-                         color_list=['r', 'b'],
-                         title="Pretreeted Object Points down sampled",
-                         show_plot=show_plot,
-                         save_plot=False,
-                         scale=0.3,
-                        #  scale=1,
-                        #  center=[0.7,-0.3,0.3]
-                        # center=[-1, 0,1]
-                        )
-        self.plot_poses(camera_positions_list=[self.train_model.camera_positions, self.query_camera_positions_pretreeted],
-                        camera_directions_list=[self.train_model.camera_directions, self.query_camera_directions_pretreeted],
-                        label_list=[self.train_model.name, self.query_model.name],
-                        color_list=['r', 'b'],
-                        title="Pretreeted Camera Poses",
-                        show_plot=show_plot,
-                        save_plot=False)
-        
+            # Pretreetment
+            self.pretreet(query_positions=query_positions, train_positions=train_positions)
+        else :
+            if self.train_model.camera_positions.shape[-1] == 1:
+                train_camera_positions = self.train_model.camera_positions.squeeze(-1)
+            else :
+                train_camera_positions = self.train_model.camera_positions
+            self.train_camera_positions = train_camera_positions
+            self.train_camera_directions = self.train_model.camera_directions
+            
+        if estimate_type == "cpd":
+            transformed_query_positions = np.dot(query_positions, self.R_init.T) + self.t_init
+            trainformed_query_directions = np.dot(query_directions, self.R_init.T)
+            self.plot_poses(camera_positions_list=[train_positions, transformed_query_positions],
+                            camera_directions_list=[train_directions, trainformed_query_directions],
+                            label_list=[self.train_model.name, self.query_model.name],
+                            color_list=['r', 'b'],
+                            title="Pretreeted matched Camera Poses",
+                            show_plot=show_plot,
+                            save_plot=False)
+            self.plot_points(points_list=[self.train_object_points_down],
+                            label_list=[self.train_model.name],
+                            color_list=['r'],
+                            title="Train Object Points down sampled",
+                            show_plot=show_plot,
+                            save_plot=False,
+                            scale=0.3,
+                            #  scale=1,
+                            #  center=[0.7,-0.3,0.3]
+                            # center=[-1, 0,1]
+                            )
+            self.plot_points(points_list=[self.query_object_points_down_pretreeted],
+                            label_list=[self.query_model.name],
+                            color_list=['b'],
+                            title="Pretreeted matched Query Object Points down sampled",
+                            show_plot=show_plot,
+                            save_plot=False,
+                            scale=0.3,
+                            #  scale=1,
+                            #  center=[0.7,-0.3,0.3]
+                            # center=[-1, 0,1]
+                            )
+            self.plot_points(points_list=[self.train_object_points_down, self.query_object_points_down_pretreeted],
+                            label_list=[self.train_model.name, self.query_model.name],
+                            color_list=['r', 'b'],
+                            title="Pretreeted Object Points down sampled",
+                            show_plot=show_plot,
+                            save_plot=False,
+                            scale=0.3,
+                            #  scale=1,
+                            #  center=[0.7,-0.3,0.3]
+                            # center=[-1, 0,1]
+                            )
+            self.plot_poses(camera_positions_list=[self.train_model.camera_positions, self.query_camera_positions_pretreeted],
+                            camera_directions_list=[self.train_model.camera_directions, self.query_camera_directions_pretreeted],
+                            label_list=[self.train_model.name, self.query_model.name],
+                            color_list=['r', 'b'],
+                            title="Pretreeted Camera Poses",
+                            show_plot=show_plot,
+                            save_plot=False)
+            
         ## estimate transformation matrix
         if estimate_type == 'icp':
             self.estimate_transformation_matrix_with_icp()
@@ -844,80 +868,81 @@ class ModelMerger:
             self.extract_points_from_matches()
             self.estimate_transformation_matrix()
             self.transform_query_camera_pose()
-           
-        ## plot down sampled points
-        self.plot_points(points_list=[self.train_object_points_down],
-                         label_list=[self.train_model.name],
-                         color_list=['r'],
-                         title="Train Object Points down sampled",
-                         show_plot=show_plot,
-                         save_plot=False,
-                         scale=0.3,
-                        #  scale=1,
-                        #  center=[0.7,-0.3,0.3]
-                        # center=[-1, 0,1]
-                        )        
-        self.plot_points(points_list=[self.query_object_points_down_transformed],
-                         label_list=[self.query_model.name],
-                         color_list=['b'],
-                         title="Transformed Query Object Points down sampled",
-                         show_plot=show_plot,
-                         save_plot=False,
-                         scale=0.3,
-                        #  scale=1,
-                        #  center=[0.7,-0.3,0.3]
-                        # center=[-1, 0,1]
-                        )        
-        self.plot_points(points_list=[self.train_object_points_down, self.query_object_points_down_transformed],
-                         label_list=[self.train_model.name, self.query_model.name],
-                         color_list=['r', 'b'],
-                         title="Merged Object Points down sampled",
-                         show_plot=show_plot,
-                         save_plot=False,
-                         scale=0.3,
-                        #  scale=1,
-                        #  center=[0.7,-0.3,0.3]
-                        # center=[-1, 0,1]
-                        )        
         
-        ## culculate volume
-        self.culc_volume()
-        
-        ## plot all points
-        self.plot_points(points_list=[self.train_object_points],
-                         label_list=[self.train_model.name], 
-                         color_list=['r'],
-                         title="Train Object Points",
-                         show_plot=show_plot,
-                         save_plot=False,
-                         scale=0.3,
-                        #  scale=1,
-                        #  center=[0.7,-0.3,0.3]
-                        # center=[-1, 0,1]
-                        )        
-        self.plot_points(points_list=[self.query_object_points_transformed], 
-                         label_list=[self.query_model.name], 
-                         color_list=['b'],
-                         title="Transformed Query Object Points",
-                         show_plot=show_plot,
-                         save_plot=False,
-                         scale=0.3,
-                        #  scale=1,
-                        #  center=[0.7,-0.3,0.3]
-                        # center=[-1, 0,1]
-                        )        
-        self.plot_points(points_list=[self.train_object_points, self.query_object_points_transformed],
-                            label_list=[self.train_model.name, self.query_model.name],
-                            color_list=['r', 'b'],
-                            title="Merged Object Points",
+        if estimate_type == "cpd":
+            ## plot down sampled points
+            self.plot_points(points_list=[self.train_object_points_down],
+                            label_list=[self.train_model.name],
+                            color_list=['r'],
+                            title="Train Object Points down sampled",
                             show_plot=show_plot,
                             save_plot=False,
-                         scale=0.3,
-                        #  scale=1,
-                        #  center=[0.7,-0.3,0.3]
-                        # center=[-1, 0,1]
-                        )            
-        ## plot camera poses
+                            scale=0.3,
+                            #  scale=1,
+                            #  center=[0.7,-0.3,0.3]
+                            # center=[-1, 0,1]
+                            )        
+            self.plot_points(points_list=[self.query_object_points_down_transformed],
+                            label_list=[self.query_model.name],
+                            color_list=['b'],
+                            title="Transformed Query Object Points down sampled",
+                            show_plot=show_plot,
+                            save_plot=False,
+                            scale=0.3,
+                            #  scale=1,
+                            #  center=[0.7,-0.3,0.3]
+                            # center=[-1, 0,1]
+                            )        
+            self.plot_points(points_list=[self.train_object_points_down, self.query_object_points_down_transformed],
+                            label_list=[self.train_model.name, self.query_model.name],
+                            color_list=['r', 'b'],
+                            title="Merged Object Points down sampled",
+                            show_plot=show_plot,
+                            save_plot=False,
+                            scale=0.3,
+                            #  scale=1,
+                            #  center=[0.7,-0.3,0.3]
+                            # center=[-1, 0,1]
+                            )        
+            
+            ## culculate volume
+            self.culc_volume()
+            
+            ## plot all points
+            self.plot_points(points_list=[self.train_object_points],
+                            label_list=[self.train_model.name], 
+                            color_list=['r'],
+                            title="Train Object Points",
+                            show_plot=show_plot,
+                            save_plot=False,
+                            scale=0.3,
+                            #  scale=1,
+                            #  center=[0.7,-0.3,0.3]
+                            # center=[-1, 0,1]
+                            )        
+            self.plot_points(points_list=[self.query_object_points_transformed], 
+                            label_list=[self.query_model.name], 
+                            color_list=['b'],
+                            title="Transformed Query Object Points",
+                            show_plot=show_plot,
+                            save_plot=False,
+                            scale=0.3,
+                            #  scale=1,
+                            #  center=[0.7,-0.3,0.3]
+                            # center=[-1, 0,1]
+                            )        
+            self.plot_points(points_list=[self.train_object_points, self.query_object_points_transformed],
+                                label_list=[self.train_model.name, self.query_model.name],
+                                color_list=['r', 'b'],
+                                title="Merged Object Points",
+                                show_plot=show_plot,
+                                save_plot=False,
+                            scale=0.3,
+                            #  scale=1,
+                            #  center=[0.7,-0.3,0.3]
+                            # center=[-1, 0,1]
+                            )            
+            ## plot camera poses
         self.plot_poses(camera_positions_list=[self.train_camera_positions, self.query_camera_positions_transformed],
                         camera_directions_list=[self.train_camera_directions, self.query_camera_directions_transformed],
                         label_list=[self.train_model.name, self.query_model.name],

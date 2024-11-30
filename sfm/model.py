@@ -78,7 +78,12 @@ class Model:
                 _ = struct.unpack('<I', f.read(4))[0]  # 無視される値
                 
                 # パラメータ（PINHOLEモデルの場合、fx, fy, cx, cyの4つを仮定）
-                num_params = 4
+                if model == "SIMPLE_PINHOLE" :
+                    num_params = 3
+                elif model == "PINHOLE":
+                    num_params = 4
+                else: # その他のモデルの場合、パラメータ数は不明
+                    raise ValueError(f"Unknown camera model: {model}")
                 param_data = f.read(8 * num_params)
                 params = struct.unpack('<' + 'd' * num_params, param_data)
                 
