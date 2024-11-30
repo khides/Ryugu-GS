@@ -201,13 +201,21 @@ class ModelMerger:
         
         # カメラ方向に回転のみを適用（方向はスケールや平行移動を適用しない）
         transformed_directions = np.dot(self.query_model.camera_directions, self.R.T)
+        transformed_directions_normalized = transformed_directions / np.linalg.norm(transformed_directions, axis=1, keepdims=True)
+        transformed_ups = np.dot(self.query_model.camera_ups, self.R.T)
+        transformed_ups_normalized = transformed_ups / np.linalg.norm(transformed_ups, axis=1, keepdims=True)
+
+        transformed_rights = np.dot(self.query_model.camera_rights, self.R.T)
+        transformed_rights_normalized = transformed_rights / np.linalg.norm(transformed_rights, axis=1, keepdims=True)
         
         # point3dに回転、スケール、平行移動を適用
         query_object_points_transformed = self.scale * np.dot(query_object_points, self.R.T) + self.t
         
         self.query_camera_positions_transformed = transformed_positions
-        self.query_camera_directions_transformed = transformed_directions
+        self.query_camera_directions_transformed = transformed_directions_normalized
         self.query_object_points_transformed = query_object_points_transformed
+        self.query_camera_ups_transformed = transformed_ups_normalized
+        self.query_camera_rights_transformed = transformed_rights_normalized
     
     def estimate_affine_matrix_with_ransac(self, ransac_threshold: float = 3.0, confidence: float = 0.99) -> None:
         """
@@ -600,7 +608,7 @@ class ModelMerger:
         if show_plot:
             plt.show()   
 
-    def merge_model (self):
+    def merge_model (self, estimate_type: str):
         ## トレーニングモデルのカメラ位置、方向、3D点群を更新
         index = 0
         for pose in self.train_model.camera_pose:
@@ -609,8 +617,9 @@ class ModelMerger:
             self.train_model.camera_pose[pose]["up"] = self.train_camera_ups[index]
             self.train_model.camera_pose[pose]["right"] = self.train_camera_rights[index]
             index += 1
-        self.train_model.update_images_bin(mean=self.train_mean)
-        self.train_model.update_points3d(mean=self.train_mean)
+        if estimate_type == "cpd":
+            self.train_model.update_images_bin(mean=self.train_mean)
+            self.train_model.update_points3d(mean=self.train_mean)
         self.train_model.pcd.points = o3d.utility.Vector3dVector(self.train_object_points)
         
         ## クエリモデルのカメラ位置、方向、3D点群を更新
@@ -622,8 +631,13 @@ class ModelMerger:
             self.query_model.camera_pose[pose]["right"] = self.query_camera_rights_transformed[index]
             index += 1
         # self.query_model.update_cameras_bin(scale=self.s_reg)
-        self.query_model.update_images_bin(R_init=self.R_init, t_init=self.t_init,mean=self.query_mean, B_reg=self.B_reg, t_reg=self.t_reg)
-        self.query_model.update_points3d(R_init=self.R_init, t_init=self.t_init,mean=self.query_mean, B_reg=self.B_reg, t_reg=self.t_reg)
+        self.query_model.update_images_bin(
+            # R_init=self.R_init, t_init=self.t_init,mean=self.query_mean, B_reg=self.B_reg, t_reg=self.t_reg
+            )
+        if estimate_type == "cpd":
+            self.query_model.update_points3d(R_init=self.R_init, t_init=self.t_init,mean=self.query_mean, B_reg=self.B_reg, t_reg=self.t_reg)
+        else:
+            self.query_model.update_points3d(R_init=self.R, t_init=self.t, s_init=self.scale)
         self.query_model.pcd.points = o3d.utility.Vector3dVector(self.query_object_points_transformed)
         
         ## モデルをマージ
@@ -746,18 +760,18 @@ class ModelMerger:
         
         ## pretreetment
         if estimate_type == "cpd":       
-            query_positions = np.array([self.query_model.camera_pose["r_019.png"]["position"].squeeze(),
-                                        self.query_model.camera_pose["r_020.png"]["position"].squeeze(),
-                                        self.query_model.camera_pose["r_021.png"]["position"].squeeze()])
-            train_positions = np.array([self.train_model.camera_pose["r_019.png"]["position"].squeeze(),
-                                        self.train_model.camera_pose["r_020.png"]["position"].squeeze(),
-                                        self.train_model.camera_pose["r_021.png"]["position"].squeeze()])
-            query_directions = np.array([self.query_model.camera_pose["r_019.png"]["direction"].squeeze(),
-                                        self.query_model.camera_pose["r_020.png"]["direction"].squeeze(),
-                                        self.query_model.camera_pose["r_021.png"]["direction"].squeeze()])
-            train_directions = np.array([self.train_model.camera_pose["r_019.png"]["direction"].squeeze(),
-                                        self.train_model.camera_pose["r_020.png"]["direction"].squeeze(),
-                                        self.train_model.camera_pose["r_021.png"]["direction"].squeeze()])
+            query_positions = np.array([self.query_model.camera_pose["bottom_r_019.png"]["position"].squeeze(),
+                                        self.query_model.camera_pose["bottom_r_020.png"]["position"].squeeze(),
+                                        self.query_model.camera_pose["bottom_r_021.png"]["position"].squeeze()])
+            train_positions = np.array([self.train_model.camera_pose["head_r_019.png"]["position"].squeeze(),
+                                        self.train_model.camera_pose["head_r_020.png"]["position"].squeeze(),
+                                        self.train_model.camera_pose["head_r_021.png"]["position"].squeeze()])
+            query_directions = np.array([self.query_model.camera_pose["bottom_r_019.png"]["direction"].squeeze(),
+                                        self.query_model.camera_pose["bottom_r_020.png"]["direction"].squeeze(),
+                                        self.query_model.camera_pose["bottom_r_021.png"]["direction"].squeeze()])
+            train_directions = np.array([self.train_model.camera_pose["head_r_019.png"]["direction"].squeeze(),
+                                        self.train_model.camera_pose["head_r_020.png"]["direction"].squeeze(),
+                                        self.train_model.camera_pose["head_r_021.png"]["direction"].squeeze()])
                  
             # query_positions = np.array([self.query_model.camera_pose["hyb2_onc_20180824_072322_tvf_l2a.fit.png"]["position"].squeeze(),
             #                             self.query_model.camera_pose["hyb2_onc_20180824_083942_tvf_l2a.fit.png"]["position"].squeeze(),
@@ -798,6 +812,9 @@ class ModelMerger:
                 train_camera_positions = self.train_model.camera_positions
             self.train_camera_positions = train_camera_positions
             self.train_camera_directions = self.train_model.camera_directions
+            self.train_camera_ups = self.train_model.camera_ups
+            self.train_camera_rights = self.train_model.camera_rights
+
             
         if estimate_type == "cpd":
             transformed_query_positions = np.dot(query_positions, self.R_init.T) + self.t_init
@@ -953,7 +970,7 @@ class ModelMerger:
         self.logger.info("Processed all images in Input")
         
         ## merge model
-        self.merge_model()
+        self.merge_model(estimate_type=estimate_type)
         self.logger.info("Model Merged")
     
 

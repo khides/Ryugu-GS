@@ -11,14 +11,14 @@ def merge(logger: Logger, conf: OmegaConf) -> None:
         name= conf.train_model_name,
         logger=logger
         ) # トレインモデルの読み込み        
-    train_model.read_model()
+    train_model.read_model(estimate_type=conf.estimate_type) # トレインモデルの読み込み
 
     query_model = Model(
         model_path=conf.query_model_path,
         name=conf.query_model_name,
         logger=logger
         ) # クエリモデルの読み込みs
-    query_model.read_model()
+    query_model.read_model(estimate_type=conf.estimate_type) # クエリモデルの読み込み
     
     merger = ModelMerger(
         query_model=query_model,

@@ -267,19 +267,21 @@ class Model:
         """
         self.pcd = o3d.io.read_point_cloud(self.pcd_ply_path)
                 
-    def read_model(self):
+    def read_model(self, estimate_type: str) -> None:
         """
         モデルを読み込む
         """
         self.read_cameras_from_bin()
         self.read_images_from_bin()
-        self.read_images_file()
+        if estimate_type == "cpd":
+            self.read_images_file()
         self.read_points3d_from_bin()
         # self.read_camera_poses_from_images()
         self.read_keypoints_from_db()
         self.read_descriptors_from_db()
         self.read_pcd_from_ply()
-        # self.get_feature_id_to_points3d_id()
+        if estimate_type != "cpd":
+            self.get_feature_id_to_points3d_id()
         self.logger.info(f"Model {self.name} is read.")
         
     def update_cameras_bin(self, scale: float) -> None:
@@ -291,7 +293,9 @@ class Model:
             camera_data['height'] = int(round(camera_data['height'] * scale))
             camera_data['params'] = [param * scale for param in camera_data['params']]
     
-    def update_images_bin(self, R_init = None, t_init = None,mean = None, B_reg = None, t_reg = None) -> None:
+    def update_images_bin(self,
+                        #   R_init = None, t_init = None,mean = None, B_reg = None, t_reg = None
+                          ) -> None:
         """
         images_binを更新する
         """
@@ -357,7 +361,7 @@ class Model:
                     image_data["tvec"] = tvec.flatten().tolist()  # 並進ベクトルをリストに変換して格納
                     break
         
-    def update_points3d(self, R_init = None, t_init = None,mean = None, B_reg = None, t_reg = None) -> None:
+    def update_points3d(self, R_init = None, t_init = None, s_init = None ,mean = None, B_reg = None, t_reg = None) -> None:
         """
         points3dを更新する
         """
@@ -365,7 +369,10 @@ class Model:
         all_xyz = np.array([point_data["xyz"] for point_data in self.points3d.values()])  # (N, 3)の形状
         transformed_xyz = all_xyz
         if R_init is not None and t_init is not None:
-            transformed_xyz = np.dot(transformed_xyz, R_init.T) + t_init  # 一括で変換を適用
+            if s_init:
+                transformed_xyz = s_init * np.dot(transformed_xyz, R_init.T) + t_init
+            else :
+                transformed_xyz = np.dot(transformed_xyz, R_init.T) + t_init  # 一括で変換を適用
         if mean is not None:
             transformed_xyz = transformed_xyz - mean
         if B_reg is not None and t_reg is not None:
