@@ -66,7 +66,7 @@ def create_image_grids(directory, output_dir, grid_size=(6, 5), font_path=None, 
 
 # 使用例
 create_image_grids(
-    directory="./data_input/pole-18-8-24/images",
+    directory="./data_input/pole-18-8-24/sources",
     output_dir="image_grid/BOX-B",
     grid_size=(5, 6),
     font_size=50  # 必要に応じてフォントファイルのパスを指定
