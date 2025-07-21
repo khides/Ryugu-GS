@@ -11,10 +11,11 @@ from typing import Tuple
 class ComparisonBenchmark:
     """Orchestrates comparison between Gaussian Splatting and MVS pipelines"""
     
-    def __init__(self, data_path: str, output_dir: str = None):
+    def __init__(self, data_path: str, output_dir: str = None, gs_dir: str = None):
         self.data_path = Path(data_path)
         self.output_dir = Path(output_dir) if output_dir else self.data_path / "comparison_output"
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.gs_dir_override = Path(gs_dir) if gs_dir else None
         
         # Validate input data structure
         self.validate_input_data()
@@ -87,6 +88,53 @@ class ComparisonBenchmark:
             
             raise FileNotFoundError("Invalid input data structure")
     
+    def find_gaussian_splatting_directory(self) -> Path:
+        """Find the Gaussian Splatting directory relative to the current location"""
+        # If user provided override, use that
+        if self.gs_dir_override and self.gs_dir_override.exists():
+            if (self.gs_dir_override / "train.py").exists():
+                print(f"Using user-specified Gaussian Splatting directory: {self.gs_dir_override}")
+                return self.gs_dir_override.resolve()
+            else:
+                print(f"Warning: User-specified directory {self.gs_dir_override} does not contain train.py")
+        
+        # Try different possible locations for gaussian-splatting directory
+        script_dir = Path(__file__).parent  # Directory where this script is located
+        
+        candidates = [
+            # Same directory as this script
+            script_dir / "gaussian-splatting",
+            # Parent directory
+            script_dir.parent / "gaussian-splatting",
+            # Relative to data path
+            self.data_path.parent / "gaussian-splatting",
+            # Direct relative path
+            Path("./gaussian-splatting"),
+            Path("../gaussian-splatting"),
+        ]
+        
+        for candidate in candidates:
+            if candidate.exists() and (candidate / "train.py").exists():
+                print(f"Found Gaussian Splatting directory: {candidate}")
+                return candidate.resolve()
+        
+        # If not found, try to find it in the current working directory tree
+        cwd = Path.cwd()
+        for candidate in [
+            cwd / "gaussian-splatting",
+            cwd.parent / "gaussian-splatting"
+        ]:
+            if candidate.exists() and (candidate / "train.py").exists():
+                print(f"Found Gaussian Splatting directory: {candidate}")
+                return candidate.resolve()
+        
+        print("Warning: Could not automatically locate gaussian-splatting directory")
+        print("Searched locations:")
+        for candidate in candidates:
+            print(f"  - {candidate}")
+        
+        return None
+    
     def run_command_with_timing(self, cmd: list, description: str, 
                                cwd: str = None) -> Tuple[float, int, str, str]:
         """Run command and measure execution time"""
@@ -132,6 +180,13 @@ class ComparisonBenchmark:
         gs_output_dir = self.output_dir / "gaussian_splatting"
         gs_output_dir.mkdir(exist_ok=True)
         
+        # Find Gaussian Splatting directory
+        gs_dir = self.find_gaussian_splatting_directory()
+        if gs_dir is None:
+            print("Error: Could not find gaussian-splatting directory")
+            self.results["gaussian_splatting"]["error"] = "Gaussian Splatting directory not found"
+            return False
+        
         try:
             # Step 1: Training
             train_cmd = [
@@ -142,7 +197,7 @@ class ComparisonBenchmark:
             
             train_time, train_ret, _, train_stderr = self.run_command_with_timing(
                 train_cmd, "Gaussian Splatting Training", 
-                cwd=str(self.data_path.parent / "gaussian-splatting")
+                cwd=str(gs_dir)
             )
             
             if train_ret != 0:
@@ -161,7 +216,7 @@ class ComparisonBenchmark:
             
             render_time, render_ret, _, render_stderr = self.run_command_with_timing(
                 render_cmd, "Gaussian Splatting Rendering",
-                cwd=str(self.data_path.parent / "gaussian-splatting")
+                cwd=str(gs_dir)
             )
             
             if render_ret != 0:
@@ -180,7 +235,7 @@ class ComparisonBenchmark:
             
             metrics_time, _, _, _ = self.run_command_with_timing(
                 metrics_cmd, "Gaussian Splatting Metrics",
-                cwd=str(self.data_path.parent / "gaussian-splatting")
+                cwd=str(gs_dir)
             )
             
             # Parse metrics results (attempt to find results.json)
@@ -535,6 +590,8 @@ Required data structure:
                        help="Path to input data directory")
     parser.add_argument("-o", "--output", type=str, default=None,
                        help="Output directory for comparison results (default: <source_path>/comparison_output)")
+    parser.add_argument("--gaussian-splatting-dir", type=str, default=None,
+                       help="Path to gaussian-splatting directory (auto-detected if not specified)")
     
     args = parser.parse_args()
     
@@ -545,7 +602,7 @@ Required data structure:
     
     try:
         # Run comparison
-        benchmark = ComparisonBenchmark(args.source_path, args.output)
+        benchmark = ComparisonBenchmark(args.source_path, args.output, args.gaussian_splatting_dir)
         success = benchmark.run_full_comparison()
         
         return 0 if success else 1
