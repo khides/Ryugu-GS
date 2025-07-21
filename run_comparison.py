@@ -39,7 +39,7 @@ class ComparisonBenchmark:
         ]
         
         # Check for COLMAP-style structure
-        # Support both sparse/0 and sparse directly
+        # Support both sparse/0 and sparse directly, prioritizing sparse/0
         sparse_dirs = [
             self.data_path / "sparse" / "0",
             self.data_path / "sparse"
@@ -59,8 +59,9 @@ class ComparisonBenchmark:
         if sparse_dir:
             colmap_paths.append(sparse_dir)
         
-        # Check for images in either Input or images directory
+        # Check for images in multiple possible directories
         image_dirs = [
+            self.data_path / "images" / "Input",  # New: nested structure
             self.data_path / "Input",
             self.data_path / "images"
         ]
@@ -114,6 +115,7 @@ class ComparisonBenchmark:
             print("  │   └── points3D.bin")
             print("  ├── Input/               # Source images")
             print("  └── database.db          # COLMAP database (optional)")
+            print("\nNote: Also supports images/Input/ nested structure")
             
             raise FileNotFoundError("Invalid input data structure")
     
@@ -315,6 +317,36 @@ class ComparisonBenchmark:
                 "--data_device", "cpu",  # Store images in CPU memory
             ]
             
+            # For COLMAP data, add eval mode only if we have a proper test set
+            # For merged data without explicit test set, skip eval mode to avoid NaN metrics
+            if hasattr(self, 'data_format') and self.data_format == "colmap":
+                # Check if there's a separate test directory or transforms_test.json
+                has_test_data = (
+                    (self.data_path / "test").exists() or 
+                    (self.data_path / "transforms_test.json").exists()
+                )
+                if has_test_data:
+                    train_cmd.append("--eval")
+                    print("Found test data - enabling evaluation mode")
+                else:
+                    print("No separate test data found - training only (no eval metrics will be computed)")
+            elif hasattr(self, 'data_format') and self.data_format == "nerf":
+                # NeRF format usually has explicit test set
+                train_cmd.append("--eval")
+                print("NeRF format - enabling evaluation mode")
+            
+            # Add images directory specification for COLMAP data
+            if hasattr(self, 'data_format') and self.data_format == "colmap" and hasattr(self, 'image_dir'):
+                # Get relative path from data_path to image_dir for --images parameter
+                try:
+                    rel_image_path = self.image_dir.relative_to(self.data_path)
+                    train_cmd.extend(["--images", str(rel_image_path)])
+                    print(f"Using images directory: {rel_image_path}")
+                except ValueError:
+                    # If relative path fails, use the directory name
+                    train_cmd.extend(["--images", self.image_dir.name])
+                    print(f"Using images directory: {self.image_dir.name}")
+            
             # Add additional memory optimization if system has limited VRAM
             try:
                 import psutil
@@ -369,47 +401,66 @@ class ComparisonBenchmark:
                 return False
             
             # Step 3: Metrics calculation
-            metrics_cmd = [
-                sys.executable, "metrics.py",
-                "-m", str(abs_model_path)
-            ]
-            
-            metrics_time, _, _, _ = self.run_command_with_timing(
-                metrics_cmd, "Gaussian Splatting Metrics",
-                cwd=str(gs_dir)
+            # Only run metrics if we have test data
+            has_test_data = (
+                hasattr(self, 'data_format') and self.data_format == "nerf" or
+                (hasattr(self, 'data_format') and self.data_format == "colmap" and 
+                 ((self.data_path / "test").exists() or 
+                  (self.data_path / "transforms_test.json").exists()))
             )
             
+            metrics_time = 0
+            if has_test_data:
+                metrics_cmd = [
+                    sys.executable, "metrics.py",
+                    "-m", str(abs_model_path)
+                ]
+                
+                metrics_time, _, _, _ = self.run_command_with_timing(
+                    metrics_cmd, "Gaussian Splatting Metrics",
+                    cwd=str(gs_dir)
+                )
+            else:
+                print("Skipping metrics calculation (no test data available)")
+            
             # Parse metrics results (attempt to find results.json)
-            # metrics.py saves results.json using string concatenation, not Path join
-            metrics_file = abs_model_path / "results.json"
             gs_metrics = {}
             
-            print(f"Looking for metrics at: {metrics_file}")
-            if metrics_file.exists():
-                try:
-                    with open(metrics_file) as f:
-                        gs_metrics = json.load(f)
-                        print(f"Loaded metrics: {gs_metrics}")
-                except Exception as e:
-                    print(f"Warning: Could not parse GS metrics: {e}")
+            if has_test_data:
+                # metrics.py saves results.json using string concatenation, not Path join
+                metrics_file = abs_model_path / "results.json"
+                
+                print(f"Looking for metrics at: {metrics_file}")
+                if metrics_file.exists():
+                    try:
+                        with open(metrics_file) as f:
+                            gs_metrics = json.load(f)
+                            print(f"Loaded metrics: {gs_metrics}")
+                            
+                    except Exception as e:
+                        print(f"Warning: Could not parse GS metrics: {e}")
+                else:
+                    print(f"Warning: Metrics file not found at {metrics_file}")
+                    # Try alternative locations
+                    alt_locations = [
+                        gs_output_dir / "model" / "results.json",
+                        gs_output_dir / "results.json",
+                        abs_model_path.parent / "results.json"
+                    ]
+                    for alt_path in alt_locations:
+                        if alt_path.exists():
+                            print(f"Found metrics at alternative location: {alt_path}")
+                            try:
+                                with open(alt_path) as f:
+                                    gs_metrics = json.load(f)
+                                    print(f"Loaded metrics: {gs_metrics}")
+                                    break
+                            except Exception as e:
+                                print(f"Warning: Could not parse GS metrics from {alt_path}: {e}")
             else:
-                print(f"Warning: Metrics file not found at {metrics_file}")
-                # Try alternative locations
-                alt_locations = [
-                    gs_output_dir / "model" / "results.json",
-                    gs_output_dir / "results.json",
-                    abs_model_path.parent / "results.json"
-                ]
-                for alt_path in alt_locations:
-                    if alt_path.exists():
-                        print(f"Found metrics at alternative location: {alt_path}")
-                        try:
-                            with open(alt_path) as f:
-                                gs_metrics = json.load(f)
-                                print(f"Loaded metrics: {gs_metrics}")
-                                break
-                        except Exception as e:
-                            print(f"Warning: Could not parse GS metrics from {alt_path}: {e}")
+                print("No metrics file expected (no test data available)")
+                # For datasets without test data, we can't compute quality metrics
+                gs_metrics = {"note": "No test data available for quality metrics"}
             
             # Store results
             self.results["gaussian_splatting"] = {
@@ -706,10 +757,26 @@ class ComparisonBenchmark:
         
         print(f"\nDetailed results saved to: {results_file}")
     
+    def _all_metrics_are_nan(self, metrics_dict: dict) -> bool:
+        """Check if all metric values in the dictionary are NaN"""
+        import math
+        
+        for method_name, metrics in metrics_dict.items():
+            if isinstance(metrics, dict):
+                for metric_name, value in metrics.items():
+                    if isinstance(value, (int, float)) and not math.isnan(value):
+                        return False
+        return True
+    
     def _extract_metric(self, metrics_dict: dict, metric_name: str) -> float:
         """Extract metric value from potentially nested dictionary"""
         if not metrics_dict:
             print(f"Warning: Empty metrics dictionary when extracting {metric_name}")
+            return float('nan')
+        
+        # Check for special note indicating no test data
+        if "note" in metrics_dict:
+            print(f"No test data available - returning NaN for {metric_name}")
             return float('nan')
         
         # Debug print
