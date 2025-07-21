@@ -1,0 +1,39 @@
+{
+    "name": "ryugu",
+    "dockerComposeFile": [
+        "./docker-compose.yml"
+    ],
+    "service": "ryugu",
+    "workspaceFolder": "/root/workspace",
+    "postCreateCommand": "pip install -r requirements.txt",
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "terminal.integrated.defaultProfile.linux": "bash",
+          "python.defaultInterpreterPath": "/usr/local/bin/python",
+    
+          "terminal.integrated.profiles.linux": {
+            "bash": {
+              "path": "/bin/bash"
+            }
+          },
+          "workbench.colorCustomizations": {
+            "titleBar.activeBackground": "#295c59",
+            "titleBar.inactiveBackground": "#295c59"
+          }
+        },
+        "extensions": [
+          "dbaeumer.vscode-eslint",
+          "esbenp.prettier-vscode",
+          "ms-vscode-remote.remote-containers",
+          "ms-azuretools.vscode-docker",
+          "mhutchie.git-graph",
+          "donjayamanne.githistory",
+          "wayou.vscode-todo-highlight",
+          "gruntfuggly.todo-tree",
+          "ms-python.python" ,
+          "mechatroner.rainbow-csv"
+          ]
+      }
+    }
+}

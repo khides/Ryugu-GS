@@ -1,0 +1,14 @@
+services:
+  ryugu:
+    container_name: ryugu
+    build:
+      context: ..
+      dockerfile: ./dev/Dockerfile
+    environment:
+        PYTHONPATH: /root/workspace
+    volumes:
+        - ../..:/root/workspace
+    command: sleep infinity
+    # environment:
+    #   - PATH=/dev/bin:$PATH
+
