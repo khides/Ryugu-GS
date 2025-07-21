@@ -39,10 +39,41 @@ class ComparisonBenchmark:
         ]
         
         # Check for COLMAP-style structure
-        colmap_paths = [
+        # Support both sparse/0 and sparse directly
+        sparse_dirs = [
             self.data_path / "sparse" / "0",
-            self.data_path / "Input"
+            self.data_path / "sparse"
         ]
+        
+        # Find the actual sparse directory
+        sparse_dir = None
+        for d in sparse_dirs:
+            if d.exists() and d.is_dir():
+                # Check if it contains the required files
+                required_files = ["cameras.bin", "images.bin", "points3D.bin"]
+                if all((d / f).exists() for f in required_files):
+                    sparse_dir = d
+                    break
+        
+        colmap_paths = []
+        if sparse_dir:
+            colmap_paths.append(sparse_dir)
+        
+        # Check for images in either Input or images directory
+        image_dirs = [
+            self.data_path / "Input",
+            self.data_path / "images"
+        ]
+        
+        image_dir = None
+        for d in image_dirs:
+            if d.exists() and d.is_dir():
+                # Check if it contains image files
+                image_files = list(d.glob("*.jpg")) + list(d.glob("*.png")) + list(d.glob("*.JPG")) + list(d.glob("*.PNG"))
+                if image_files:
+                    image_dir = d
+                    colmap_paths.append(d)
+                    break
         
         # Test if we have NeRF-style data
         nerf_missing = [p for p in nerf_paths if not p.exists()]
@@ -53,18 +84,16 @@ class ComparisonBenchmark:
             self.data_format = "nerf"
             print("Detected NeRF-style data format")
             return
-        elif len(colmap_missing) == 0:
+        elif len(colmap_missing) == 0 and sparse_dir and image_dir:
             # COLMAP-style format detected
             self.data_format = "colmap"
-            print("Detected COLMAP-style data format")
+            print(f"Detected COLMAP-style data format")
+            print(f"  Sparse reconstruction: {sparse_dir}")
+            print(f"  Images directory: {image_dir}")
             
-            # Check for required COLMAP files
-            sparse_dir = self.data_path / "sparse" / "0"
-            required_files = ["cameras.bin", "images.bin", "points3D.bin"]
-            missing_files = [f for f in required_files if not (sparse_dir / f).exists()]
-            
-            if missing_files:
-                raise FileNotFoundError(f"Missing COLMAP sparse reconstruction files: {missing_files}")
+            # Store the detected paths for later use
+            self.sparse_dir = sparse_dir
+            self.image_dir = image_dir
             
             return
         else:
@@ -351,14 +380,36 @@ class ComparisonBenchmark:
             )
             
             # Parse metrics results (attempt to find results.json)
-            metrics_file = gs_output_dir / "model" / "results.json"
+            # metrics.py saves results.json using string concatenation, not Path join
+            metrics_file = abs_model_path / "results.json"
             gs_metrics = {}
+            
+            print(f"Looking for metrics at: {metrics_file}")
             if metrics_file.exists():
                 try:
                     with open(metrics_file) as f:
                         gs_metrics = json.load(f)
+                        print(f"Loaded metrics: {gs_metrics}")
                 except Exception as e:
                     print(f"Warning: Could not parse GS metrics: {e}")
+            else:
+                print(f"Warning: Metrics file not found at {metrics_file}")
+                # Try alternative locations
+                alt_locations = [
+                    gs_output_dir / "model" / "results.json",
+                    gs_output_dir / "results.json",
+                    abs_model_path.parent / "results.json"
+                ]
+                for alt_path in alt_locations:
+                    if alt_path.exists():
+                        print(f"Found metrics at alternative location: {alt_path}")
+                        try:
+                            with open(alt_path) as f:
+                                gs_metrics = json.load(f)
+                                print(f"Loaded metrics: {gs_metrics}")
+                                break
+                        except Exception as e:
+                            print(f"Warning: Could not parse GS metrics from {alt_path}: {e}")
             
             # Store results
             self.results["gaussian_splatting"] = {
@@ -594,6 +645,24 @@ class ComparisonBenchmark:
         mvs_ssim = mvs_metrics.get("summary", {}).get("SSIM", 0)
         mvs_lpips = mvs_metrics.get("summary", {}).get("LPIPS", 0)
         
+        # Helper function to determine winner considering nan values
+        def get_metric_winner(gs_val, mvs_val, higher_is_better=True):
+            import math
+            gs_is_nan = math.isnan(gs_val) if isinstance(gs_val, (int, float)) else True
+            mvs_is_nan = math.isnan(mvs_val) if isinstance(mvs_val, (int, float)) else True
+            
+            if gs_is_nan and mvs_is_nan:
+                return "N/A"
+            elif gs_is_nan:
+                return "MVS"
+            elif mvs_is_nan:
+                return "Gaussian Splatting"
+            else:
+                if higher_is_better:
+                    return "Gaussian Splatting" if gs_val > mvs_val else "MVS"
+                else:
+                    return "Gaussian Splatting" if gs_val < mvs_val else "MVS"
+        
         # Create comparison
         self.results["comparison"] = {
             "timing": {
@@ -612,17 +681,17 @@ class ComparisonBenchmark:
                 "PSNR": {
                     "gaussian_splatting": gs_psnr,
                     "mvs_benchmark": mvs_psnr,
-                    "winner": "Gaussian Splatting" if gs_psnr > mvs_psnr else "MVS"
+                    "winner": get_metric_winner(gs_psnr, mvs_psnr, higher_is_better=True)
                 },
                 "SSIM": {
                     "gaussian_splatting": gs_ssim,
                     "mvs_benchmark": mvs_ssim,
-                    "winner": "Gaussian Splatting" if gs_ssim > mvs_ssim else "MVS"
+                    "winner": get_metric_winner(gs_ssim, mvs_ssim, higher_is_better=True)
                 },
                 "LPIPS": {
                     "gaussian_splatting": gs_lpips,
                     "mvs_benchmark": mvs_lpips,
-                    "winner": "Gaussian Splatting" if gs_lpips < mvs_lpips else "MVS"
+                    "winner": get_metric_winner(gs_lpips, mvs_lpips, higher_is_better=False)
                 }
             }
         }
@@ -640,18 +709,28 @@ class ComparisonBenchmark:
     def _extract_metric(self, metrics_dict: dict, metric_name: str) -> float:
         """Extract metric value from potentially nested dictionary"""
         if not metrics_dict:
-            return 0.0
+            print(f"Warning: Empty metrics dictionary when extracting {metric_name}")
+            return float('nan')
+        
+        # Debug print
+        print(f"Extracting {metric_name} from metrics: {metrics_dict}")
         
         # Try direct access
         if metric_name in metrics_dict:
-            return float(metrics_dict[metric_name])
+            value = float(metrics_dict[metric_name])
+            print(f"Found {metric_name} directly: {value}")
+            return value
         
         # Try nested access (common in GS results)
-        for _, value in metrics_dict.items():
-            if isinstance(value, dict) and metric_name in value:
-                return float(value[metric_name])
+        # GS results structure: {"method_name": {"SSIM": x, "PSNR": y, "LPIPS": z}}
+        for method_name, method_metrics in metrics_dict.items():
+            if isinstance(method_metrics, dict) and metric_name in method_metrics:
+                value = float(method_metrics[metric_name])
+                print(f"Found {metric_name} in {method_name}: {value}")
+                return value
         
-        return 0.0
+        print(f"Warning: Could not find {metric_name} in metrics")
+        return float('nan')
     
     def _format_time(self, seconds: float) -> str:
         """Format seconds as HH:MM:SS"""
@@ -681,9 +760,29 @@ class ComparisonBenchmark:
         
         # Quality Metrics
         print(f"{'[QUALITY]':<15} |")
-        print(f"{'PSNR ↑':<15} | {comp['quality']['PSNR']['gaussian_splatting']:.2f} dB{'':<12} | {comp['quality']['PSNR']['mvs_benchmark']:.2f} dB{'':<12} | {comp['quality']['PSNR']['winner']:<12}")
-        print(f"{'SSIM ↑':<15} | {comp['quality']['SSIM']['gaussian_splatting']:.4f}{'':<16} | {comp['quality']['SSIM']['mvs_benchmark']:.4f}{'':<16} | {comp['quality']['SSIM']['winner']:<12}")
-        print(f"{'LPIPS ↓':<15} | {comp['quality']['LPIPS']['gaussian_splatting']:.4f}{'':<16} | {comp['quality']['LPIPS']['mvs_benchmark']:.4f}{'':<16} | {comp['quality']['LPIPS']['winner']:<12}")
+        
+        # Format metrics with proper handling of nan values
+        def format_metric(value, suffix="", decimals=2):
+            if isinstance(value, (int, float)):
+                if not (value != value):  # Check for nan
+                    if decimals == 2:
+                        return f"{value:.2f} {suffix}"
+                    else:
+                        return f"{value:.{decimals}f} {suffix}"
+            return f"nan {suffix}"
+        
+        gs_psnr_str = format_metric(comp['quality']['PSNR']['gaussian_splatting'], "dB", 2)
+        mvs_psnr_str = format_metric(comp['quality']['PSNR']['mvs_benchmark'], "dB", 2)
+        
+        gs_ssim_str = format_metric(comp['quality']['SSIM']['gaussian_splatting'], "", 4)
+        mvs_ssim_str = format_metric(comp['quality']['SSIM']['mvs_benchmark'], "", 4)
+        
+        gs_lpips_str = format_metric(comp['quality']['LPIPS']['gaussian_splatting'], "", 4)
+        mvs_lpips_str = format_metric(comp['quality']['LPIPS']['mvs_benchmark'], "", 4)
+        
+        print(f"{'PSNR ↑':<15} | {gs_psnr_str:<20} | {mvs_psnr_str:<20} | {comp['quality']['PSNR']['winner']:<12}")
+        print(f"{'SSIM ↑':<15} | {gs_ssim_str:<20} | {mvs_ssim_str:<20} | {comp['quality']['SSIM']['winner']:<12}")
+        print(f"{'LPIPS ↓':<15} | {gs_lpips_str:<20} | {mvs_lpips_str:<20} | {comp['quality']['LPIPS']['winner']:<12}")
         
         print(f"{'='*80}")
         
