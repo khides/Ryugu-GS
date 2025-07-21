@@ -9,3 +9,5 @@
 !data_input/nerf_blender_qiita/
 config.yaml
 venv/
+openMVS/
+openMVS/.gitignore
