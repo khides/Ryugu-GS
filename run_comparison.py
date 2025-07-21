@@ -209,25 +209,47 @@ class ComparisonBenchmark:
         start_time = time.time()
         
         try:
-            result = subprocess.run(
+            # Use Popen for real-time output
+            process = subprocess.Popen(
                 cmd,
                 cwd=cwd,
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
-                timeout=7200  # 2 hour timeout
+                bufsize=1,
+                universal_newlines=True
             )
+            
+            # Capture output while displaying it in real-time
+            output_lines = []
+            print(f"🔄 {description} started - showing real-time output:")
+            print("─" * 60)
+            
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    print(output.strip())
+                    output_lines.append(output.strip())
+            
+            # Wait for process completion
+            process.wait()
             
             end_time = time.time()
             elapsed_time = end_time - start_time
             
-            if result.returncode != 0:
-                print(f"Error in {description}:")
-                print(f"Return code: {result.returncode}")
-                print(f"STDERR: {result.stderr}")
-                return elapsed_time, result.returncode, result.stdout, result.stderr
+            # Combine all output
+            full_output = "\n".join(output_lines)
+            
+            print("─" * 60)
+            if process.returncode != 0:
+                print(f"❌ Error in {description}:")
+                print(f"Return code: {process.returncode}")
+                return elapsed_time, process.returncode, full_output, full_output
             
             print(f"✓ {description} completed in {elapsed_time:.2f}s")
-            return elapsed_time, result.returncode, result.stdout, result.stderr
+            return elapsed_time, process.returncode, full_output, ""
             
         except subprocess.TimeoutExpired:
             print(f"Timeout: {description} exceeded 2 hours")
@@ -265,10 +287,15 @@ class ComparisonBenchmark:
             ]
             
             # Add additional memory optimization if system has limited VRAM
-            import psutil
-            memory = psutil.virtual_memory()
-            if memory.total / (1024**3) < 16:  # Less than 16GB RAM
-                train_cmd.extend(["--sh_degree", "2"])  # Reduce spherical harmonics degree
+            try:
+                import psutil
+                memory = psutil.virtual_memory()
+                if memory.total / (1024**3) < 16:  # Less than 16GB RAM
+                    train_cmd.extend(["--sh_degree", "2"])  # Reduce spherical harmonics degree
+                    print("ℹ️  Added memory optimization due to limited RAM")
+            except ImportError:
+                print("ℹ️  psutil not available, skipping automatic memory optimization")
+                print("    You can install it with: pip install psutil")
             
             train_time, train_ret, _, train_stderr = self.run_command_with_timing(
                 train_cmd, "Gaussian Splatting Training", 
