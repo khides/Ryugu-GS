@@ -10,4 +10,12 @@ RUN apt-get update && \
     apt-get install -y libboost-iostreams-dev libboost-program-options-dev libboost-system-dev libboost-serialization-dev && \
     apt-get install -y libopencv-dev libcgal-dev libceres-dev  libjxl-dev 
 
+RUN rm -rf openMVS && \
+    git clone https://github.com/cdcseacave/openMVS.git && cd openMVS && \
+    mkdir -p build && \
+    cd build && \
+    cmake .. -DCMAKE_BUILD_TYPE=Release && \
+    make -j$(nproc) && \
+    make install
+
 WORKDIR /root/workspace
