@@ -135,6 +135,69 @@ class ComparisonBenchmark:
         
         return None
     
+    def diagnose_gaussian_splatting_error(self, stderr: str) -> dict:
+        """Diagnose common Gaussian Splatting errors and provide suggestions"""
+        diagnosis = {
+            "diagnosis": "Unknown error",
+            "suggestions": []
+        }
+        
+        stderr_lower = stderr.lower()
+        
+        if "could not recognize scene type" in stderr_lower:
+            diagnosis["diagnosis"] = "Invalid data format or path resolution issue"
+            diagnosis["suggestions"] = [
+                "Ensure data directory contains either COLMAP format (sparse/0/) or NeRF format (transforms*.json)",
+                "Check that working directory is correct when running the script",
+                "Try using absolute paths instead of relative paths",
+                "Verify that images/ or Input/ directory exists and contains images",
+                "For COLMAP data: check that sparse/0/cameras.bin, images.bin, points3D.bin exist"
+            ]
+        elif "ページング ファイルが小さすぎる" in stderr or "paging file" in stderr_lower:
+            diagnosis["diagnosis"] = "Virtual memory (page file) insufficient"
+            diagnosis["suggestions"] = [
+                "Increase Windows virtual memory (page file) size to at least 8GB",
+                "Close other memory-intensive applications",
+                "Consider upgrading system RAM",
+                "Run: Control Panel → System → Advanced → Performance Settings → Advanced → Virtual Memory → Change"
+            ]
+        elif ("out of memory" in stderr_lower or "cuda out of memory" in stderr_lower or 
+              "cublas_status_alloc_failed" in stderr_lower or "cublascreate" in stderr_lower):
+            diagnosis["diagnosis"] = "GPU memory exhausted"
+            diagnosis["suggestions"] = [
+                "Close other GPU-intensive applications (check with nvidia-smi)",
+                "Use memory-optimized training: --resolution 2 --data_device cpu",
+                "Reduce image resolution or number of training images",
+                "Try: python train.py -s <data> --resolution 4 --data_device cpu --sh_degree 2",
+                "Consider using a GPU with more VRAM (8GB+ recommended)"
+            ]
+        elif "cudnn" in stderr_lower and ("dll" in stderr_lower or "library" in stderr_lower):
+            diagnosis["diagnosis"] = "CUDA/cuDNN library loading failure"
+            diagnosis["suggestions"] = [
+                "Verify CUDA toolkit installation matches PyTorch CUDA version",
+                "Check if PyTorch is installed with correct CUDA support: pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118",
+                "Try CPU-only mode if GPU is not required",
+                "Restart system to refresh library paths"
+            ]
+        elif "torch" in stderr_lower and ("import" in stderr_lower or "module" in stderr_lower):
+            diagnosis["diagnosis"] = "PyTorch installation or import issue"
+            diagnosis["suggestions"] = [
+                "Verify PyTorch installation: pip install torch torchvision",
+                "Check Python environment activation",
+                "Reinstall PyTorch with CUDA support if needed",
+                "Try: conda install pytorch torchvision pytorch-cuda=11.8 -c pytorch -c nvidia"
+            ]
+        elif "file not found" in stderr_lower or "no such file" in stderr_lower:
+            diagnosis["diagnosis"] = "Missing input files or incorrect data structure"
+            diagnosis["suggestions"] = [
+                "Verify input data path and structure",
+                "Check that COLMAP reconstruction files exist",
+                "Ensure images directory contains source images",
+                "Run with absolute paths instead of relative paths"
+            ]
+        
+        return diagnosis
+    
     def run_command_with_timing(self, cmd: list, description: str, 
                                cwd: str = None) -> Tuple[float, int, str, str]:
         """Run command and measure execution time"""
@@ -188,12 +251,24 @@ class ComparisonBenchmark:
             return False
         
         try:
-            # Step 1: Training
+            # Step 1: Training with memory-optimized settings
+            # Use absolute paths to avoid path resolution issues when changing working directory
+            abs_data_path = self.data_path.resolve()
+            abs_model_path = (gs_output_dir / "model").resolve()
+            
             train_cmd = [
                 sys.executable, "train.py",
-                "-s", str(self.data_path),
-                "-m", str(gs_output_dir / "model")
+                "-s", str(abs_data_path),
+                "-m", str(abs_model_path),
+                "--resolution", "2",  # Reduce image resolution to save VRAM
+                "--data_device", "cpu",  # Store images in CPU memory
             ]
+            
+            # Add additional memory optimization if system has limited VRAM
+            import psutil
+            memory = psutil.virtual_memory()
+            if memory.total / (1024**3) < 16:  # Less than 16GB RAM
+                train_cmd.extend(["--sh_degree", "2"])  # Reduce spherical harmonics degree
             
             train_time, train_ret, _, train_stderr = self.run_command_with_timing(
                 train_cmd, "Gaussian Splatting Training", 
@@ -201,17 +276,27 @@ class ComparisonBenchmark:
             )
             
             if train_ret != 0:
+                # Provide detailed error diagnosis
+                error_diagnosis = self.diagnose_gaussian_splatting_error(train_stderr)
+                print(f"\n❌ GAUSSIAN SPLATTING TRAINING FAILED")
+                print(f"Error Diagnosis: {error_diagnosis['diagnosis']}")
+                if error_diagnosis['suggestions']:
+                    print(f"Suggestions:")
+                    for suggestion in error_diagnosis['suggestions']:
+                        print(f"  • {suggestion}")
+                
                 self.results["gaussian_splatting"]["training"] = {
                     "success": False,
                     "time_seconds": train_time,
-                    "error": train_stderr
+                    "error": train_stderr,
+                    "diagnosis": error_diagnosis
                 }
                 return False
             
             # Step 2: Rendering
             render_cmd = [
                 sys.executable, "render.py",
-                "-m", str(gs_output_dir / "model")
+                "-m", str(abs_model_path)
             ]
             
             render_time, render_ret, _, render_stderr = self.run_command_with_timing(
@@ -230,7 +315,7 @@ class ComparisonBenchmark:
             # Step 3: Metrics calculation
             metrics_cmd = [
                 sys.executable, "metrics.py",
-                "-m", str(gs_output_dir / "model")
+                "-m", str(abs_model_path)
             ]
             
             metrics_time, _, _, _ = self.run_command_with_timing(
