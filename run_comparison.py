@@ -318,23 +318,19 @@ class ComparisonBenchmark:
                 "--data_device", "cpu",  # Store images in CPU memory
             ]
             
-            # For COLMAP data, add eval mode only if we have a proper test set
-            # For merged data without explicit test set, skip eval mode to avoid NaN metrics
+            # Enable eval mode for data formats that support it
             if hasattr(self, 'data_format') and self.data_format == "colmap":
-                # Check if there's a separate test directory or transforms_test.json
-                has_test_data = (
-                    (self.data_path / "test").exists() or 
-                    (self.data_path / "transforms_test.json").exists()
-                )
-                if has_test_data:
-                    train_cmd.append("--eval")
-                    print("Found test data - enabling evaluation mode")
-                else:
-                    print("No separate test data found - training only (no eval metrics will be computed)")
-            elif hasattr(self, 'data_format') and self.data_format == "nerf":
-                # NeRF format usually has explicit test set
+                # COLMAP data: Always enable eval mode - Gaussian Splatting will internally split data
+                # (typically every 8th image becomes test data)
                 train_cmd.append("--eval")
-                print("NeRF format - enabling evaluation mode")
+                print("COLMAP format - enabling evaluation mode with internal data splitting")
+            elif hasattr(self, 'data_format') and self.data_format == "nerf":
+                # NeRF format: Enable if we have explicit test set
+                if (self.data_path / "transforms_test.json").exists():
+                    train_cmd.append("--eval")
+                    print("NeRF format - enabling evaluation mode with explicit test set")
+                else:
+                    print("NeRF format - no transforms_test.json found, training only")
             
             # Add images directory specification for COLMAP data
             if hasattr(self, 'data_format') and self.data_format == "colmap" and hasattr(self, 'image_dir'):
@@ -402,12 +398,11 @@ class ComparisonBenchmark:
                 return False
             
             # Step 3: Metrics calculation
-            # Only run metrics if we have test data
+            # Run metrics if we have eval mode enabled (which means test data is available)
             has_test_data = (
-                hasattr(self, 'data_format') and self.data_format == "nerf" or
-                (hasattr(self, 'data_format') and self.data_format == "colmap" and 
-                 ((self.data_path / "test").exists() or 
-                  (self.data_path / "transforms_test.json").exists()))
+                hasattr(self, 'data_format') and self.data_format == "colmap" or  # COLMAP always has internal splitting
+                (hasattr(self, 'data_format') and self.data_format == "nerf" and 
+                 (self.data_path / "transforms_test.json").exists())  # NeRF needs explicit test set
             )
             
             metrics_time = 0
@@ -422,7 +417,7 @@ class ComparisonBenchmark:
                     cwd=str(gs_dir)
                 )
             else:
-                print("Skipping metrics calculation (no test data available)")
+                print("Skipping metrics calculation (eval mode not enabled for this data format)")
             
             # Parse metrics results (attempt to find results.json)
             gs_metrics = {}
@@ -459,9 +454,9 @@ class ComparisonBenchmark:
                             except Exception as e:
                                 print(f"Warning: Could not parse GS metrics from {alt_path}: {e}")
             else:
-                print("No metrics file expected (no test data available)")
-                # For datasets without test data, we can't compute quality metrics
-                gs_metrics = {"note": "No test data available for quality metrics"}
+                print("No metrics file expected (eval mode not enabled)")
+                # For datasets without eval mode, we can't compute quality metrics
+                gs_metrics = {"note": "Eval mode not enabled - no quality metrics available"}
             
             # Store results
             self.results["gaussian_splatting"] = {
@@ -667,6 +662,10 @@ class ComparisonBenchmark:
                       "reconstruction" in self.results["mvs_benchmark"] and 
                       self.results["mvs_benchmark"]["reconstruction"].get("skipped", False))
         
+        # Add note about COLMAP eval mode
+        if hasattr(self, 'data_format') and self.data_format == "colmap":
+            print("Note: COLMAP data uses internal train/test splitting (every 8th image as test)")
+        
         if mvs_skipped:
             print("Note: MVS benchmark was skipped (OpenMVS not available)")
         elif not gs_success or not mvs_success:
@@ -775,9 +774,9 @@ class ComparisonBenchmark:
             print(f"Warning: Empty metrics dictionary when extracting {metric_name}")
             return float('nan')
         
-        # Check for special note indicating no test data
+        # Check for special note indicating no eval mode
         if "note" in metrics_dict:
-            print(f"No test data available - returning NaN for {metric_name}")
+            print(f"Eval mode not enabled - returning NaN for {metric_name}")
             return float('nan')
         
         # Debug print
