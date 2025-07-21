@@ -35,6 +35,9 @@ pip install -e ./gaussian-splatting/submodules/simple-knn
 # Install project dependencies
 pip install -r requirements.txt
 
+# Install OpenMVS for benchmarking (Ubuntu/Debian)
+sudo apt-get install openmvs
+
 # Main training (Gaussian Splatting)
 cd gaussian-splatting
 python train.py -s <path_to_data> --config <config_file>
@@ -45,6 +48,14 @@ python -m sfm.merge --config config.yaml
 # Rendering and evaluation
 python render.py -m <model_path>
 python metrics.py -m <model_path>
+
+# Comparative benchmarking (supports both NeRF and COLMAP formats)
+python run_comparison.py -s <data_path>
+
+# Individual MVS benchmark components
+python mvs_benchmark/run_mvs.py -s <data_path>
+python mvs_benchmark/render_mvs.py -m <mesh_path> -t <transforms_file>
+python mvs_benchmark/metrics_mvs.py -r <rendered_dir> -g <gt_dir>
 
 # Docker deployment
 docker build -t ryugu-gs .
@@ -104,14 +115,22 @@ Ryugu-GS/
 - `gaussian-splatting/train.py` - Main neural training pipeline  
 - `logger/__init__.py:3` - Custom logging for scientific workflows
 - `config.example.yaml` - Configuration parameters for different datasets
+- `run_comparison.py` - Complete benchmarking orchestration system
+- `mvs_benchmark/run_mvs.py` - OpenMVS integration with performance monitoring
 
 ### Never Modify:
 - Astronomical data in CSV files (scientific accuracy required)
 - Core Gaussian Splatting implementation (maintain compatibility)
 - Docker CUDA configuration (GPU computing requirements)
 
+### Data Formats Supported:
+- **NeRF-style**: `colmap/` + `images/` + `transforms_test.json`
+- **COLMAP-style**: `sparse/0/` + `Input/` + `database.db` (optional)
+- Automatic format detection and processing pipeline adaptation
+
 ### Testing:
 - No traditional unit tests - validation through scientific metrics
 - Use `metrics.py` for quantitative evaluation
 - Visual inspection of renders in `plot/` directory
 - Model merging validation through camera pose visualization
+- Comparative benchmarking via `run_comparison.py` for method evaluation

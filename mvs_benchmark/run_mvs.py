@@ -59,20 +59,63 @@ class MVSBenchmark:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Check for required input files
-        self.colmap_dir = self.input_path / "colmap"
-        if not self.colmap_dir.exists():
-            raise FileNotFoundError(f"COLMAP directory not found: {self.colmap_dir}")
-        
-        self.images_dir = self.input_path / "images"
-        if not self.images_dir.exists():
-            raise FileNotFoundError(f"Images directory not found: {self.images_dir}")
+        # Detect and validate input data format
+        self.detect_data_format()
         
         self.benchmark_stats = {
             "input_path": str(self.input_path),
             "output_path": str(self.output_dir),
+            "data_format": self.data_format,
             "stages": {}
         }
+    
+    def detect_data_format(self):
+        """Detect the input data format (NeRF-style or COLMAP-style)"""
+        # Check for NeRF-style structure (colmap/ + images/)
+        nerf_colmap_dir = self.input_path / "colmap"
+        nerf_images_dir = self.input_path / "images"
+        
+        # Check for COLMAP-style structure (sparse/ + Input/)
+        colmap_sparse_dir = self.input_path / "sparse"
+        colmap_input_dir = self.input_path / "Input"
+        colmap_database = self.input_path / "database.db"
+        
+        if nerf_colmap_dir.exists() and nerf_images_dir.exists():
+            # NeRF-style format
+            self.data_format = "nerf"
+            self.colmap_dir = nerf_colmap_dir
+            self.images_dir = nerf_images_dir
+            print(f"Detected NeRF-style data format")
+            
+        elif colmap_sparse_dir.exists() and colmap_input_dir.exists():
+            # COLMAP-style format
+            self.data_format = "colmap"
+            # For COLMAP format, we need to use sparse/0 as the reconstruction
+            self.colmap_dir = colmap_sparse_dir / "0"
+            self.images_dir = colmap_input_dir
+            
+            # Validate COLMAP sparse reconstruction
+            required_files = ["cameras.bin", "images.bin", "points3D.bin"]
+            missing_files = [f for f in required_files if not (self.colmap_dir / f).exists()]
+            
+            if missing_files:
+                raise FileNotFoundError(f"Missing COLMAP sparse reconstruction files: {missing_files}")
+            
+            print(f"Detected COLMAP-style data format")
+            
+        else:
+            raise FileNotFoundError(
+                f"Invalid input data structure. Expected either:\n"
+                f"  NeRF-style: {self.input_path}/colmap/ + {self.input_path}/images/\n"
+                f"  COLMAP-style: {self.input_path}/sparse/ + {self.input_path}/Input/"
+            )
+        
+        # Validate that directories exist and are accessible
+        if not self.colmap_dir.exists():
+            raise FileNotFoundError(f"COLMAP directory not found: {self.colmap_dir}")
+        
+        if not self.images_dir.exists():
+            raise FileNotFoundError(f"Images directory not found: {self.images_dir}")
     
     def check_openmvs_installation(self):
         """Check if OpenMVS tools are available"""

@@ -49,8 +49,11 @@ This repository includes a comprehensive benchmarking system that compares Gauss
 # Run complete comparison benchmark
 python run_comparison.py -s <data_path>
 
-# Example with specific output directory
+# NeRF-style data example
 python run_comparison.py -s ./data_input/nerf_blender_qiita -o ./benchmark_results
+
+# COLMAP-style data example  
+python run_comparison.py -s ./data_input/colmap_asteroid -o ./benchmark_results
 ```
 
 #### Prerequisites for MVS Benchmark
@@ -69,6 +72,9 @@ git clone https://github.com/cdcseacave/openMVS.git --recursive
 
 #### Required Data Structure
 
+The benchmarking system supports two data formats:
+
+**NeRF-style Format:**
 ```
 <data_path>/
 ├── colmap/               # COLMAP sparse reconstruction output
@@ -76,6 +82,20 @@ git clone https://github.com/cdcseacave/openMVS.git --recursive
 ├── transforms_test.json  # Test camera poses (NeRF format)
 └── test/                 # Ground truth test images (optional)
 ```
+
+**COLMAP-style Format:**
+```
+<data_path>/
+├── sparse/0/             # COLMAP sparse reconstruction
+│   ├── cameras.bin       # Camera parameters
+│   ├── images.bin        # Image metadata and poses
+│   ├── points3D.bin      # 3D point cloud
+│   └── points3D.ply      # 3D point cloud (optional)
+├── Input/                # Source images
+└── database.db           # COLMAP database (optional)
+```
+
+The system automatically detects the data format and adapts the processing pipeline accordingly.
 
 #### Benchmark Output
 

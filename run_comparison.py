@@ -2,13 +2,11 @@
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Dict, Any, Tuple, Optional
-import shutil
+from typing import Tuple
 
 class ComparisonBenchmark:
     """Orchestrates comparison between Gaussian Splatting and MVS pipelines"""
@@ -32,23 +30,61 @@ class ComparisonBenchmark:
     
     def validate_input_data(self):
         """Validate that input data has required structure"""
-        required_paths = [
+        # Check for NeRF-style structure
+        nerf_paths = [
             self.data_path / "colmap",
             self.data_path / "images",
             self.data_path / "transforms_test.json"
         ]
         
-        missing_paths = [p for p in required_paths if not p.exists()]
+        # Check for COLMAP-style structure
+        colmap_paths = [
+            self.data_path / "sparse" / "0",
+            self.data_path / "Input"
+        ]
         
-        if missing_paths:
-            print("Error: Missing required input data:")
-            for path in missing_paths:
-                print(f"  - {path}")
-            print("\nRequired directory structure:")
+        # Test if we have NeRF-style data
+        nerf_missing = [p for p in nerf_paths if not p.exists()]
+        colmap_missing = [p for p in colmap_paths if not p.exists()]
+        
+        if len(nerf_missing) == 0:
+            # NeRF-style format detected
+            self.data_format = "nerf"
+            print("Detected NeRF-style data format")
+            return
+        elif len(colmap_missing) == 0:
+            # COLMAP-style format detected
+            self.data_format = "colmap"
+            print("Detected COLMAP-style data format")
+            
+            # Check for required COLMAP files
+            sparse_dir = self.data_path / "sparse" / "0"
+            required_files = ["cameras.bin", "images.bin", "points3D.bin"]
+            missing_files = [f for f in required_files if not (sparse_dir / f).exists()]
+            
+            if missing_files:
+                raise FileNotFoundError(f"Missing COLMAP sparse reconstruction files: {missing_files}")
+            
+            return
+        else:
+            # Neither format is valid
+            print("Error: Invalid input data structure.")
+            print("Expected either:")
+            print("\nNeRF-style:")
             print("  <data_path>/")
-            print("  ├── colmap/          # COLMAP sparse reconstruction")
-            print("  ├── images/          # Input images")
-            print("  └── transforms_test.json  # Test camera poses")
+            print("  ├── colmap/              # COLMAP sparse reconstruction")
+            print("  ├── images/              # Input images")
+            print("  └── transforms_test.json # Test camera poses")
+            
+            print("\nCOLMAP-style:")
+            print("  <data_path>/")
+            print("  ├── sparse/0/            # COLMAP sparse reconstruction")
+            print("  │   ├── cameras.bin")
+            print("  │   ├── images.bin")
+            print("  │   └── points3D.bin")
+            print("  ├── Input/               # Source images")
+            print("  └── database.db          # COLMAP database (optional)")
+            
             raise FileNotFoundError("Invalid input data structure")
     
     def run_command_with_timing(self, cmd: list, description: str, 
@@ -104,7 +140,7 @@ class ComparisonBenchmark:
                 "-m", str(gs_output_dir / "model")
             ]
             
-            train_time, train_ret, train_stdout, train_stderr = self.run_command_with_timing(
+            train_time, train_ret, _, train_stderr = self.run_command_with_timing(
                 train_cmd, "Gaussian Splatting Training", 
                 cwd=str(self.data_path.parent / "gaussian-splatting")
             )
@@ -123,7 +159,7 @@ class ComparisonBenchmark:
                 "-m", str(gs_output_dir / "model")
             ]
             
-            render_time, render_ret, render_stdout, render_stderr = self.run_command_with_timing(
+            render_time, render_ret, _, render_stderr = self.run_command_with_timing(
                 render_cmd, "Gaussian Splatting Rendering",
                 cwd=str(self.data_path.parent / "gaussian-splatting")
             )
@@ -142,7 +178,7 @@ class ComparisonBenchmark:
                 "-m", str(gs_output_dir / "model")
             ]
             
-            metrics_time, metrics_ret, metrics_stdout, metrics_stderr = self.run_command_with_timing(
+            metrics_time, _, _, _ = self.run_command_with_timing(
                 metrics_cmd, "Gaussian Splatting Metrics",
                 cwd=str(self.data_path.parent / "gaussian-splatting")
             )
@@ -189,7 +225,7 @@ class ComparisonBenchmark:
                 "-o", str(mvs_output_dir)
             ]
             
-            mvs_time, mvs_ret, mvs_stdout, mvs_stderr = self.run_command_with_timing(
+            mvs_time, mvs_ret, _, mvs_stderr = self.run_command_with_timing(
                 mvs_cmd, "MVS Reconstruction"
             )
             
@@ -227,7 +263,7 @@ class ComparisonBenchmark:
                 "-o", str(render_output_dir)
             ]
             
-            render_time, render_ret, render_stdout, render_stderr = self.run_command_with_timing(
+            render_time, render_ret, _, render_stderr = self.run_command_with_timing(
                 render_cmd, "MVS Novel View Rendering"
             )
             
@@ -240,17 +276,23 @@ class ComparisonBenchmark:
                 return False
             
             # Step 3: Calculate metrics
-            gt_dir = self.data_path / "test"  # Assume ground truth test images are here
-            if not gt_dir.exists():
-                # Try alternative locations
-                alt_gt_dirs = [
-                    self.data_path / "images" / "test",
-                    self.data_path / "images",
-                ]
-                for alt_dir in alt_gt_dirs:
-                    if alt_dir.exists():
-                        gt_dir = alt_dir
-                        break
+            # Find ground truth test images based on data format
+            if hasattr(self, 'data_format') and self.data_format == "colmap":
+                # For COLMAP format, use Input directory
+                gt_dir = self.data_path / "Input"
+            else:
+                # For NeRF format, try test directory first
+                gt_dir = self.data_path / "test"
+                if not gt_dir.exists():
+                    # Try alternative locations
+                    alt_gt_dirs = [
+                        self.data_path / "images" / "test",
+                        self.data_path / "images",
+                    ]
+                    for alt_dir in alt_gt_dirs:
+                        if alt_dir.exists():
+                            gt_dir = alt_dir
+                            break
             
             metrics_output = mvs_output_dir / "metrics.json"
             metrics_cmd = [
@@ -260,7 +302,7 @@ class ComparisonBenchmark:
                 "-o", str(metrics_output)
             ]
             
-            metrics_time, metrics_ret, metrics_stdout, metrics_stderr = self.run_command_with_timing(
+            metrics_time, _, _, _ = self.run_command_with_timing(
                 metrics_cmd, "MVS Metrics Calculation"
             )
             
@@ -276,7 +318,7 @@ class ComparisonBenchmark:
             
             # Parse metrics
             mvs_metrics = {}
-            if metrics_output.exists() and metrics_ret == 0:
+            if metrics_output.exists():
                 try:
                     with open(metrics_output) as f:
                         mvs_metrics = json.load(f)
@@ -392,7 +434,7 @@ class ComparisonBenchmark:
             return float(metrics_dict[metric_name])
         
         # Try nested access (common in GS results)
-        for key, value in metrics_dict.items():
+        for _, value in metrics_dict.items():
             if isinstance(value, dict) and metric_name in value:
                 return float(value[metric_name])
         
