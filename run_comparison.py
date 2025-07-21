@@ -385,6 +385,26 @@ class ComparisonBenchmark:
         mvs_output_dir = self.output_dir / "mvs_benchmark"
         
         try:
+            # Check if OpenMVS is available first
+            import shutil
+            required_tools = ["DensifyPointCloud", "ReconstructMesh", "TextureMesh"]
+            missing_tools = [tool for tool in required_tools if not shutil.which(tool)]
+            
+            if missing_tools:
+                print(f"⚠️  OpenMVS tools not available: {missing_tools}")
+                print("   Skipping MVS benchmark - install OpenMVS to enable:")
+                print("   Ubuntu/Debian: sudo apt-get install openmvs")
+                print("   Or build from source: https://github.com/cdcseacave/openMVS")
+                
+                # Mark as skipped rather than failed
+                self.results["mvs_benchmark"]["reconstruction"] = {
+                    "success": False,
+                    "time_seconds": 0,
+                    "error": "OpenMVS not available",
+                    "skipped": True
+                }
+                return False
+            
             # Step 1: Run MVS reconstruction
             mvs_cmd = [
                 sys.executable, "mvs_benchmark/run_mvs.py",
@@ -392,17 +412,35 @@ class ComparisonBenchmark:
                 "-o", str(mvs_output_dir)
             ]
             
-            mvs_time, mvs_ret, _, mvs_stderr = self.run_command_with_timing(
+            mvs_time, mvs_ret, mvs_stdout, mvs_stderr = self.run_command_with_timing(
                 mvs_cmd, "MVS Reconstruction"
             )
             
             if mvs_ret != 0:
-                self.results["mvs_benchmark"]["reconstruction"] = {
-                    "success": False,
-                    "time_seconds": mvs_time,
-                    "error": mvs_stderr
-                }
-                return False
+                # Check if this is specifically an OpenMVS missing error
+                error_msg = mvs_stderr or ""
+                stdout_msg = mvs_stdout or ""
+                combined_output = error_msg + stdout_msg
+                
+                if "Missing OpenMVS tools" in combined_output or "OpenMVS tools:" in combined_output:
+                    print("⚠️  OpenMVS not available - skipping MVS benchmark")
+                    print("   Install OpenMVS to enable full comparison:")
+                    print("   Ubuntu/Debian: sudo apt-get install openmvs")
+                    
+                    self.results["mvs_benchmark"]["reconstruction"] = {
+                        "success": False,
+                        "time_seconds": mvs_time,
+                        "error": "OpenMVS not available",
+                        "skipped": True
+                    }
+                    return False
+                else:
+                    self.results["mvs_benchmark"]["reconstruction"] = {
+                        "success": False,
+                        "time_seconds": mvs_time,
+                        "error": mvs_stderr
+                    }
+                    return False
             
             # Find generated mesh file
             mesh_candidates = [
@@ -520,7 +558,15 @@ class ComparisonBenchmark:
         gs_success = self.results["gaussian_splatting"].get("success", False)
         mvs_success = self.results["mvs_benchmark"].get("success", False)
         
-        if not gs_success or not mvs_success:
+        # Check if MVS was skipped
+        mvs_skipped = (not mvs_success and 
+                      "mvs_benchmark" in self.results and 
+                      "reconstruction" in self.results["mvs_benchmark"] and 
+                      self.results["mvs_benchmark"]["reconstruction"].get("skipped", False))
+        
+        if mvs_skipped:
+            print("Note: MVS benchmark was skipped (OpenMVS not available)")
+        elif not gs_success or not mvs_success:
             print("Warning: One or both pipelines failed, comparison may be incomplete")
         
         # Extract timing information
@@ -674,8 +720,22 @@ class ComparisonBenchmark:
         print(f"\n🏁 COMPARISON COMPLETE")
         print(f"Total benchmark time: {self._format_time(total_time)}")
         
-        if not gs_success or not mvs_success:
-            print("⚠️  Warning: One or both pipelines failed. See detailed logs above.")
+        # Check if MVS was skipped due to missing tools
+        mvs_skipped = (not mvs_success and 
+                      "mvs_benchmark" in self.results and 
+                      "reconstruction" in self.results["mvs_benchmark"] and 
+                      self.results["mvs_benchmark"]["reconstruction"].get("skipped", False))
+        
+        if not gs_success:
+            print("❌ Gaussian Splatting pipeline failed. See detailed logs above.")
+            return False
+        elif mvs_skipped:
+            print("✓ Gaussian Splatting completed successfully")
+            print("⚠️  MVS benchmark skipped (OpenMVS not available)")
+            print("   Install OpenMVS to enable full comparison")
+            return True
+        elif not mvs_success:
+            print("⚠️  Warning: MVS pipeline failed. See detailed logs above.")
             return False
         
         return True
