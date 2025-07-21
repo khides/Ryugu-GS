@@ -60,10 +60,11 @@ class ComparisonBenchmark:
             colmap_paths.append(sparse_dir)
         
         # Check for images in multiple possible directories
+        # Prioritize images/ over Input/ to avoid grayscale issues
         image_dirs = [
-            self.data_path / "images" / "Input",  # New: nested structure
-            self.data_path / "Input",
-            self.data_path / "images"
+            self.data_path / "images",            # Prioritize main images directory (usually RGB/RGBA)
+            self.data_path / "images" / "Input",  # Nested structure
+            self.data_path / "Input",             # May contain grayscale images
         ]
         
         image_dir = None

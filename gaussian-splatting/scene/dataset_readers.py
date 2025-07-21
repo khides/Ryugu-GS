@@ -97,6 +97,10 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder):
         image_path = os.path.join(images_folder, os.path.basename(extr.name))
         image_name = os.path.basename(image_path).split(".")[0]
         image = Image.open(image_path)
+        
+        # Convert grayscale or other modes to RGB to ensure 3 channels
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
 
         cam_info = CameraInfo(uid=uid, R=R, T=T, FovY=FovY, FovX=FovX, image=image,
                               image_path=image_path, image_name=image_name, width=width, height=height)
@@ -201,8 +205,12 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
             image_path = os.path.join(path, cam_name)
             image_name = Path(cam_name).stem
             image = Image.open(image_path)
+            
+            # Convert grayscale or other modes to RGBA to ensure 4 channels
+            if image.mode != 'RGBA':
+                image = image.convert('RGBA')
 
-            im_data = np.array(image.convert("RGBA"))
+            im_data = np.array(image)
 
             bg = np.array([1,1,1]) if white_background else np.array([0, 0, 0])
 
