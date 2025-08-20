@@ -39,16 +39,18 @@ warnings.filterwarnings('ignore', category=AstropyWarning)
 class FitsToJpegConverter:
     """FITSファイルをJPEG画像に変換するクラス"""
     
-    def __init__(self, quality: int = 95, stretch: str = "zscale"):
+    def __init__(self, quality: int = 95, stretch: str = "minmax", filter_tvf: bool = False):
         """
         初期化
         
         Args:
             quality: JPEG品質 (1-100)
             stretch: 画像ストレッチ方法 ("zscale", "minmax", "percentile")
+            filter_tvf: 'tvf'を含むファイルのみ処理するか
         """
         self.quality = quality
         self.stretch = stretch
+        self.filter_tvf = filter_tvf
         
         if stretch not in ["zscale", "minmax", "percentile"]:
             raise ValueError("stretch must be 'zscale', 'minmax', or 'percentile'")
@@ -65,22 +67,32 @@ class FitsToJpegConverter:
         """
         try:
             with fits.open(fits_path) as hdul:
-                # 最初の画像データを取得
-                for hdu in hdul:
-                    if hdu.data is not None and len(hdu.data.shape) >= 2:
-                        data = hdu.data
-                        
-                        # 3次元以上の場合は最初のスライスを使用
-                        while len(data.shape) > 2:
-                            data = data[0]
-                        
-                        # NaN値を0に置換
-                        data = np.nan_to_num(data, nan=0.0, posinf=0.0, neginf=0.0)
-                        
-                        return data
+                # Hayabusa2データの場合、通常HDU[1]に画像データがある
+                if len(hdul) > 1 and hdul[1].data is not None:
+                    data = hdul[1].data
+                else:
+                    # フォールバック: 最初の有効な画像データを取得
+                    data = None
+                    for hdu in hdul:
+                        if hdu.data is not None and len(hdu.data.shape) >= 2:
+                            data = hdu.data
+                            break
+                    
+                    if data is None:
+                        print(f"警告: {fits_path} に有効な画像データが見つかりません")
+                        return None
                 
-                print(f"警告: {fits_path} に有効な画像データが見つかりません")
-                return None
+                # 3次元以上の場合は最初のスライスを使用
+                while len(data.shape) > 2:
+                    data = data[0]
+                
+                # NaN値と無限大値をゼロに置換
+                data = np.nan_to_num(data, nan=0.0, posinf=0.0, neginf=0.0)
+                
+                # データ型を浮動小数点に変換
+                data = data.astype(np.float64)
+                
+                return data
                 
         except Exception as e:
             print(f"エラー: {fits_path} の読み取りに失敗しました - {e}")
@@ -120,16 +132,23 @@ class FitsToJpegConverter:
         return normalized
     
     def _minmax_normalize(self, data: np.ndarray) -> np.ndarray:
-        """最小値-最大値による正規化"""
-        finite_data = data[np.isfinite(data)]
-        if len(finite_data) == 0:
+        """最小値-最大値による正規化（参考スクリプトと同じ方式）"""
+        # 有効なデータのみで最小値・最大値を計算
+        finite_mask = np.isfinite(data) & (data != 0)
+        if not np.any(finite_mask):
             return np.zeros_like(data)
         
+        finite_data = data[finite_mask]
         min_val, max_val = finite_data.min(), finite_data.max()
+        
         if max_val == min_val:
             return np.zeros_like(data)
         
-        return (data - min_val) / (max_val - min_val)
+        # 全データを正規化（無効値は0のまま）
+        normalized = np.zeros_like(data, dtype=np.float64)
+        normalized[finite_mask] = (data[finite_mask] - min_val) / (max_val - min_val)
+        
+        return normalized
     
     def convert_fits_to_jpeg(self, input_path: Path, output_path: Path) -> bool:
         """
@@ -153,11 +172,9 @@ class FitsToJpegConverter:
         normalized_data = self.normalize_data(data)
         
         # PIL Imageに変換
-        # 画像の向きを調整（通常、天文画像は上下反転している）
-        image_array = np.flipud(normalized_data)
-        
+        # 参考スクリプトに合わせて画像の向きはそのまま使用
         try:
-            image = Image.fromarray(image_array, mode='L')  # グレースケール
+            image = Image.fromarray(normalized_data, mode='L')  # グレースケール
             
             # 出力ディレクトリ作成
             output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -196,6 +213,10 @@ class FitsToJpegConverter:
         for ext in fits_extensions:
             fits_files.extend(input_dir.rglob(f"*{ext}"))
             fits_files.extend(input_dir.rglob(f"*{ext.upper()}"))
+        
+        # 参考スクリプトのように 'tvf' を含むファイルのフィルタリングオプション
+        if hasattr(self, 'filter_tvf') and self.filter_tvf:
+            fits_files = [f for f in fits_files if 'tvf' in f.name.lower()]
         
         if not fits_files:
             print(f"FITSファイルが見つかりません: {input_dir}")
@@ -280,14 +301,20 @@ def main():
     parser.add_argument(
         "--stretch",
         choices=["zscale", "minmax", "percentile"],
-        default="zscale",
-        help="画像ストレッチ方法（デフォルト: zscale）"
+        default="minmax",
+        help="画像ストレッチ方法（デフォルト: minmax）"
     )
     
     parser.add_argument(
         "--flat-output",
         action="store_true",
         help="出力をフラット構造にする（ディレクトリ構造を保持しない）"
+    )
+    
+    parser.add_argument(
+        "--filter-tvf",
+        action="store_true",
+        help="'tvf'を含むファイルのみ処理する（Hayabusa2データ用）"
     )
     
     args = parser.parse_args()
@@ -308,7 +335,8 @@ def main():
     try:
         converter = FitsToJpegConverter(
             quality=args.quality,
-            stretch=args.stretch
+            stretch=args.stretch,
+            filter_tvf=args.filter_tvf
         )
         
         if args.input_file:
