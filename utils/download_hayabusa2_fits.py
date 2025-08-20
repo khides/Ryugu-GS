@@ -7,7 +7,6 @@ Usage:
     python download_hayabusa2_fits.py --start-date 2005-11-02 --end-date 2005-11-19 --output-dir ./hayabusa2_data
 """
 
-import os
 import sys
 import argparse
 import requests
@@ -15,7 +14,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from urllib.parse import urljoin
 import time
-from typing import List, Optional
+from typing import List
 
 class HayabusaDataDownloader:
     """Hayabusa2 ONC FITS データダウンローダー"""
