@@ -7,7 +7,8 @@
 1. [Hayabusa2 FITSデータダウンローダー](#1-hayabusa2-fitsデータダウンローダー)
 2. [FITS to JPEG 変換ツール](#2-fits-to-jpeg-変換ツール)
 3. [ヒストグラム調整ツール (CLAHE)](#3-ヒストグラム調整ツール-clahe)
-4. [その他のスクリプト](#4-その他のスクリプト)
+4. [高度な画像マスキングツール](#4-高度な画像マスキングツール)
+5. [その他のスクリプト](#5-その他のスクリプト)
 
 ---
 
@@ -180,7 +181,106 @@ python utils/adjust_histogram.py --input-dir ./images --output-dir ./soft_enhanc
 
 ---
 
-## 4. その他のスクリプト
+## 4. 高度な画像マスキングツール
+
+**ファイル**: `image_masking.py`
+
+複数のマスキング手法を提供する統合画像マスキングツールです。AI自動マスキングから手動マスクまで対応。
+
+### 依存パッケージ
+
+```bash
+# 基本機能
+pip install opencv-python numpy
+
+# AI マスキング用（オプション）
+# Detectron2のインストール: https://detectron2.readthedocs.io/en/latest/tutorials/install.html
+pip install torch torchvision
+# その後、Detectron2をインストール
+```
+
+### マスキング手法
+
+#### 1. AI自動マスキング (detectron2)
+
+```bash
+# 基本的なAI自動マスキング
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method detectron2
+
+# 透明背景で出力
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method detectron2 --output-mode transparent
+
+# 検出閾値調整（より厳しい検出）
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method detectron2 --detection-threshold 0.7
+```
+
+#### 2. 色範囲マスキング (color-range)
+
+```bash
+# 黒背景除去（デフォルト）
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method color-range
+
+# 白背景除去
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method color-range --color-lower 200,200,200 --color-upper 255,255,255
+
+# HSV色空間での緑色除去
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method color-range --color-space HSV --color-lower 40,40,40 --color-upper 80,255,255
+```
+
+#### 3. 輪郭検出マスキング (contour)
+
+```bash
+# 標準的な輪郭検出
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method contour
+
+# 小さな物体除去（面積フィルタ）
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method contour --min-area 5000 --max-area 50000
+
+# 二値化閾値調整
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method contour --threshold-val 100
+```
+
+#### 4. 手動マスクファイル適用 (manual)
+
+```bash
+# 単一ファイル
+python utils/image_masking.py --input-file image.jpg --output-file masked.png --method manual --mask-file mask.png
+
+# ディレクトリ一括（対応するマスクファイルが必要）
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method manual --mask-dir ./masks
+```
+
+### 高度な使用例
+
+```bash
+# 色範囲マスクの反転（指定色以外をマスク）
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method color-range --invert-mask
+
+# フラット出力構造
+python utils/image_masking.py --input-dir ./nested_images --output-dir ./flat_masked --method detectron2 --flat-output
+
+# AIマスキング（黒背景モード）
+python utils/image_masking.py --input-dir ./images --output-dir ./masked --method detectron2 --output-mode black_background
+```
+
+### 主要オプション
+
+| オプション | デフォルト | 説明 |
+|-----------|------------|------|
+| `--method` | color-range | マスキング手法 |
+| `--detection-threshold` | 0.05 | AI検出閾値（低い値=より多く検出） |
+| `--output-mode` | transparent | AI出力モード（transparent/black_background/original_background） |
+| `--color-lower` | 0,0,0 | 色範囲下限値 |
+| `--color-upper` | 50,50,50 | 色範囲上限値 |
+| `--color-space` | BGR | 色空間（BGR/HSV/LAB） |
+| `--invert-mask` | False | 色範囲マスクを反転 |
+| `--min-area` | 1000 | 輪郭最小面積 |
+| `--max-area` | 100000 | 輪郭最大面積 |
+| `--threshold-val` | 127 | 二値化閾値 |
+
+---
+
+## 5. その他のスクリプト
 
 ### create_appendix.py
 プロジェクト用の補助ファイル作成スクリプト（既存）
@@ -204,8 +304,11 @@ python utils/download_hayabusa2_fits.py --start-date 2005-11-02 --end-date 2005-
 # Step 2: FITS → JPEG変換
 python utils/fits_to_jpeg.py --input-dir ./raw_fits --output-dir ./jpeg_images --filter-tvf --stretch minmax
 
-# Step 3: ヒストグラム調整（必要に応じて）
-python utils/adjust_histogram.py --input-dir ./jpeg_images --output-dir ./enhanced_images --clip-limit 25.0
+# Step 3: 画像マスキング（必要に応じて）
+python utils/image_masking.py --input-dir ./jpeg_images --output-dir ./masked_images --method color-range
+
+# Step 4: ヒストグラム調整（必要に応じて）
+python utils/adjust_histogram.py --input-dir ./masked_images --output-dir ./enhanced_images --clip-limit 25.0
 ```
 
 ### 2. 一般的な天文画像処理
@@ -223,7 +326,8 @@ python utils/adjust_histogram.py --input-dir ./processed_images --output-dir ./f
 ```bash
 # 単一FITSファイルの完全処理
 python utils/fits_to_jpeg.py --input-file observation.fits --output-file temp.jpg --stretch minmax
-python utils/adjust_histogram.py --input-file temp.jpg --output-file final_processed.jpg --clip-limit 30.0
+python utils/image_masking.py --input-file temp.jpg --output-file temp_masked.png --method color-range
+python utils/adjust_histogram.py --input-file temp_masked.png --output-file final_processed.jpg --clip-limit 30.0
 ```
 
 ---
@@ -237,6 +341,15 @@ python utils/adjust_histogram.py --input-file temp.jpg --output-file final_proce
 | Hayabusa2 | minmax | 95 | `--filter-tvf`推奨 |
 | 一般天文画像 | zscale | 90-100 | 高ダイナミックレンジ |
 | ノイズ多 | percentile | 85-95 | 外れ値除去効果 |
+
+### 画像マスキング
+
+| データ種別 | method | パラメータ | 備考 |
+|-----------|--------|------------|------|
+| 天文画像 | color-range | color-upper: 30,30,30 | 暗い背景除去 |
+| 一般写真 | detectron2 | threshold: 0.05 | AI自動検出 |
+| 高コントラスト | contour | threshold-val: 100 | 輪郭明確 |
+| 手動制御 | manual | - | 精密マスク |
 
 ### CLAHE調整
 
