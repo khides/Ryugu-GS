@@ -55,13 +55,21 @@ class ImageMaskingTool:
         if method == "detectron2":
             if not DETECTRON2_AVAILABLE:
                 raise ValueError("Detectron2が必要ですがインストールされていません")
-            self.predictor = self._setup_detectron2(**kwargs)
+            # Detectron2設定用パラメータのみを抽出
+            detectron2_kwargs = {
+                'threshold': kwargs.get('threshold', 0.05),
+                'model': kwargs.get('model', 'mask_rcnn_R_50_FPN_3x')
+            }
+            self.predictor = self._setup_detectron2(**detectron2_kwargs)
+            # 処理時パラメータを保存
+            self.output_mode = kwargs.get('output_mode', 'transparent')
         
         # 色範囲マスキング設定
         elif method == "color-range":
             self.color_lower = kwargs.get('color_lower', (0, 0, 0))
             self.color_upper = kwargs.get('color_upper', (50, 50, 50))
             self.color_space = kwargs.get('color_space', 'BGR')
+            self.invert_mask = kwargs.get('invert_mask', False)
         
         # 輪郭検出設定
         elif method == "contour":
@@ -84,7 +92,7 @@ class ImageMaskingTool:
         return file_path.suffix.lower() in self.supported_extensions
     
     def mask_with_detectron2(self, image: np.ndarray, 
-                           output_mode: str = "transparent") -> np.ndarray:
+                           output_mode: str = None) -> np.ndarray:
         """
         Detectron2による物体検出マスキング
         
@@ -97,6 +105,10 @@ class ImageMaskingTool:
         """
         if not DETECTRON2_AVAILABLE:
             raise ValueError("Detectron2が利用できません")
+        
+        # output_modeが指定されていない場合はインスタンス変数を使用
+        if output_mode is None:
+            output_mode = self.output_mode
         
         outputs = self.predictor(image)
         masks = outputs["instances"].pred_masks.cpu().numpy()
@@ -130,7 +142,7 @@ class ImageMaskingTool:
             return result
     
     def mask_with_color_range(self, image: np.ndarray,
-                            invert_mask: bool = False) -> np.ndarray:
+                            invert_mask: bool = None) -> np.ndarray:
         """
         色範囲による閾値マスキング
         
@@ -141,6 +153,10 @@ class ImageMaskingTool:
         Returns:
             マスクされた画像
         """
+        # invert_maskが指定されていない場合はインスタンス変数を使用
+        if invert_mask is None:
+            invert_mask = self.invert_mask
+        
         # 色空間変換
         if self.color_space == 'HSV':
             converted = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
@@ -256,9 +272,11 @@ class ImageMaskingTool:
             
             # マスキング処理
             if self.method == "detectron2":
-                result = self.mask_with_detectron2(image, **kwargs)
+                # Detectron2はインスタンス変数から出力モードを使用
+                result = self.mask_with_detectron2(image)
             elif self.method == "color-range":
-                result = self.mask_with_color_range(image, **kwargs)
+                # 色範囲マスキングはインスタンス変数から設定を使用
+                result = self.mask_with_color_range(image)
             elif self.method == "contour":
                 result = self.mask_with_contours(image)
             elif self.method == "manual":
