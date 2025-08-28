@@ -371,20 +371,114 @@ class GaussianSplattingEvaluator:
         self.gs_dir = Path(gs_dir)
         self.metrics_calc = MetricsCalculator()
         self.logger = logging.getLogger(__name__)
+        
+        # データフォーマット検証
+        self._validate_and_detect_data_format()
+    
+    def _validate_and_detect_data_format(self):
+        """データフォーマットを検証・検出"""
+        # NeRF-style structure check
+        nerf_paths = [
+            self.train_data_dir / "transforms_train.json",
+            self.train_data_dir / "train"
+        ]
+        
+        # COLMAP-style structure check
+        sparse_dirs = [
+            self.train_data_dir / "sparse" / "0",
+            self.train_data_dir / "sparse"
+        ]
+        
+        # Find actual sparse directory
+        sparse_dir = None
+        for d in sparse_dirs:
+            if d.exists() and d.is_dir():
+                required_files = ["cameras.bin", "images.bin", "points3D.bin"]
+                if all((d / f).exists() for f in required_files):
+                    sparse_dir = d
+                    break
+        
+        # Check for images directories
+        image_dirs = [
+            self.train_data_dir / "images",
+            self.train_data_dir / "Input"
+        ]
+        
+        image_dir = None
+        for d in image_dirs:
+            if d.exists() and d.is_dir():
+                image_files = list(d.glob("*.jpg")) + list(d.glob("*.png"))
+                if image_files:
+                    image_dir = d
+                    break
+        
+        # Determine format
+        if all(p.exists() for p in nerf_paths):
+            self.data_format = "nerf"
+            self.logger.info("Detected NeRF-style data format")
+        elif sparse_dir and image_dir:
+            self.data_format = "colmap"
+            self.sparse_dir = sparse_dir
+            self.image_dir = image_dir
+            self.logger.info(f"Detected COLMAP-style data format")
+            self.logger.info(f"  Sparse: {sparse_dir}")
+            self.logger.info(f"  Images: {image_dir}")
+        else:
+            raise ValueError(f"Invalid training data format in {self.train_data_dir}")
+            
+        self.logger.info(f"Data format: {self.data_format}")
     
     def run_gs_training(self, output_dir: Path) -> Tuple[bool, float]:
         """Gaussian Splattingの学習を実行"""
         self.logger.info("Starting Gaussian Splatting training...")
         
+        # Use absolute paths to avoid resolution issues
+        abs_data_path = self.train_data_dir.resolve()
+        abs_model_path = output_dir.resolve()
+        
         train_cmd = [
             sys.executable, "train.py",
-            "-s", str(self.train_data_dir.resolve()),
-            "-m", str(output_dir.resolve()),
-            "--resolution", "2",
-            "--data_device", "cpu",
-            "--eval"
+            "-s", str(abs_data_path),
+            "-m", str(abs_model_path),
+            "--resolution", "2",  # Reduce image resolution to save VRAM
+            "--data_device", "cpu",  # Store images in CPU memory
         ]
         
+        # Enable eval mode based on data format
+        if self.data_format == "colmap":
+            # COLMAP data: Always enable eval mode - GS will internally split data
+            train_cmd.append("--eval")
+            self.logger.info("COLMAP format - enabling evaluation mode with internal data splitting")
+        elif self.data_format == "nerf":
+            # NeRF format: Enable if we have explicit test set
+            if (self.train_data_dir / "transforms_test.json").exists():
+                train_cmd.append("--eval")
+                self.logger.info("NeRF format - enabling evaluation mode with explicit test set")
+            else:
+                self.logger.info("NeRF format - no transforms_test.json found, training only")
+        
+        # Add images directory specification for COLMAP data
+        if self.data_format == "colmap" and hasattr(self, 'image_dir'):
+            try:
+                rel_image_path = self.image_dir.relative_to(self.train_data_dir)
+                train_cmd.extend(["--images", str(rel_image_path)])
+                self.logger.info(f"Using images directory: {rel_image_path}")
+            except ValueError:
+                # If relative path fails, use the directory name
+                train_cmd.extend(["--images", self.image_dir.name])
+                self.logger.info(f"Using images directory: {self.image_dir.name}")
+        
+        # Add memory optimization
+        try:
+            import psutil
+            memory = psutil.virtual_memory()
+            if memory.total / (1024**3) < 16:  # Less than 16GB RAM
+                train_cmd.extend(["--sh_degree", "2"])
+                self.logger.info("Added memory optimization due to limited RAM")
+        except ImportError:
+            self.logger.info("psutil not available, skipping memory optimization")
+        
+        self.logger.info(f"Training command: {' '.join(train_cmd)}")
         start_time = time.time()
         
         try:
@@ -399,7 +493,9 @@ class GaussianSplattingEvaluator:
             training_time = time.time() - start_time
             
             if process.returncode != 0:
-                self.logger.error(f"GS training failed: {process.stderr}")
+                self.logger.error(f"GS training failed with return code {process.returncode}")
+                self.logger.error(f"STDERR: {process.stderr}")
+                self.logger.error(f"STDOUT: {process.stdout}")
                 return False, training_time
             
             self.logger.info(f"GS training completed in {training_time:.2f} seconds")
@@ -672,9 +768,9 @@ Expected directory structure:
         """
     )
     
-    parser.add_argument("--train-data", type=str, default="data_input/BOX-A_train",
+    parser.add_argument("--train-data", type=str, default="data_input/merged",
                         help="Training dataset directory (for GS)")
-    parser.add_argument("--test-data", type=str, default="data_input/BOX-A_test", 
+    parser.add_argument("--test-data", type=str, default="data_input/nerf_blender_qiita/test", 
                         help="Test dataset directory (for evaluation)")
     parser.add_argument("--blender-data", type=str, default="blender_data",
                         help="Blender rendering data directory")
@@ -708,10 +804,13 @@ Expected directory structure:
             print(f"  - {key}: {path}")
         
         print("\nPlease ensure you have:")
-        print("  1. Training data: data_input/BOX-A_train/")
-        print("  2. Test data: data_input/BOX-A_test/") 
+        print("  1. Training data: data_input/merged/ (COLMAP format with sparse/0/ and images/)")
+        print("  2. Test data: data_input/nerf_blender_qiita/test/ (test images)")
         print("  3. Blender data: blender_data/ (with *.png files and render_times.csv)")
         print("  4. Gaussian Splatting: gaussian-splatting/ (with train.py)")
+        print("\nAvailable datasets detected:")
+        print("  - data_input/merged/: COLMAP format")
+        print("  - data_input/nerf_blender_qiita/: NeRF format")
         print("\nSee EVALUATION_GUIDE.md for detailed setup instructions.")
         return 1
     
