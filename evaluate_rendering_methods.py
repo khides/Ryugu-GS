@@ -306,14 +306,15 @@ class MetricsCalculator:
         # 最初にGaussian Splattingのオリジナル実装を試行
         if ssim is not None:
             try:
-                return ssim(img1, img2).item()
+                ssim_score = ssim(img1, img2)
+                return ssim_score.item() if hasattr(ssim_score, 'item') else ssim_score
             except Exception as e:
                 self.logger.debug(f"GS SSIM failed: {e}, trying custom implementation")
+                # フォールバック実装を使用
+                return self.gs_ssim(img1, img2).item()
         
-    def calculate_ssim(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
-        """SSIM計算"""
-        ssim_score = ssim(img1, img2)
-        return ssim_score.item() if hasattr(ssim_score, 'item') else ssim_score
+        # フォールバック実装
+        return self.gs_ssim(img1, img2).item()
         
     def calculate_lpips(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """LPIPS計算"""
@@ -559,8 +560,23 @@ class BlenderEvaluator:
         
         return best_match, best_metrics
     
+    def normalize_frame_name(self, frame_name: str) -> str:
+        """フレーム名を正規化してマッピングを改善"""
+        # 拡張子を除去
+        frame_name = Path(frame_name).stem
+        
+        # 数値部分を抽出してゼロ埋め5桁に統一
+        import re
+        match = re.search(r'(\d+)', frame_name)
+        if match:
+            number = int(match.group(1))
+            # 「00000」形式に統一
+            return f"{number:05d}"
+        
+        return frame_name
+    
     def evaluate(self) -> List[Dict]:
-        """Blenderレンダリングの評価を実行"""
+        """Blenderレンダリングの評価を実行 - 各Blender画像ごとに結果生成"""
         self.logger.info("Starting Blender evaluation...")
         
         # 事前チェック: Blenderデータディレクトリの存在確認
@@ -673,7 +689,11 @@ class BlenderEvaluator:
                     if render_time == 0.0:
                         self.logger.warning(f"No render time found for {blender_img_path.name}, tried keys: {possible_keys}")
                     
+                    # 正規化されたフレーム名を使用（キーマッピング改善）
+                    normalized_frame_name = self.normalize_frame_name(blender_img_path.name)
+                    
                     result = {
+                        'frame_name': normalized_frame_name,  # 正規化されたフレーム名
                         'blender_image': blender_img_path.name,
                         'ground_truth_image': best_match.name,
                         'render_time_sec': render_time,
@@ -682,7 +702,7 @@ class BlenderEvaluator:
                         'lpips': metrics['lpips']
                     }
                     results.append(result)
-                    self.logger.debug(f"Successfully evaluated {blender_img_path.name}")
+                    self.logger.debug(f"Successfully evaluated {blender_img_path.name} -> frame {normalized_frame_name}")
                 else:
                     self.logger.warning(f"No matching test image found for {blender_img_path.name}")
                     failed_evaluations += 1
@@ -1013,8 +1033,23 @@ class GaussianSplattingEvaluator:
             self.logger.error(f"GS rendering error: {e}")
             return False
     
+    def normalize_frame_name(self, frame_name: str) -> str:
+        """フレーム名を正規化してマッピングを改善"""
+        # 拡張子を除去
+        frame_name = Path(frame_name).stem
+        
+        # 数値部分を抽出してゼロ埋め5桁に統一
+        import re
+        match = re.search(r'(\d+)', frame_name)
+        if match:
+            number = int(match.group(1))
+            # 「00000」形式に統一
+            return f"{number:05d}"
+        
+        return frame_name
+    
     def calculate_gs_metrics(self, model_dir: Path) -> List[Dict]:
-        """Gaussian Splattingの結果メトリクスを計算 - 適切なテストデータで評価"""
+        """Gaussian Splattingの結果メトリクスを計算 - 適切なテストデータで評価 （正規化済み）"""
         results = []
         
         # 1. まず、GSが生成したレンダリング結果を取得
@@ -1088,8 +1123,12 @@ class GaussianSplattingEvaluator:
             if gt_img_path and gt_img_path.exists():
                 metrics = self.metrics_calc.calculate_metrics(render_img_path, gt_img_path)
                 
+                # 正規化されたフレーム名を使用（Blender結果とマッチングするため）
+                normalized_frame_name = self.normalize_frame_name(render_img_path.name)
+                
                 result = {
-                    'frame_name': render_img_path.stem,
+                    'frame_name': normalized_frame_name,  # 正規化されたフレーム名
+                    'original_render_name': render_img_path.stem,  # 元のレンダー名も保持
                     'gt_image': gt_img_path.name,  # GT画像名も記録
                     'render_time_sec': 0.1,  # 個別フレーム時間は概算
                     'psnr': metrics['psnr'],
@@ -1097,8 +1136,21 @@ class GaussianSplattingEvaluator:
                     'lpips': metrics['lpips']
                 }
                 results.append(result)
+                self.logger.debug(f"GS metrics calculated: {render_img_path.stem} -> frame {normalized_frame_name}")
             else:
                 self.logger.warning(f"No GT image found for render: {render_name}")
+                # メトリクスなしでもフレーム情報を保持
+                normalized_frame_name = self.normalize_frame_name(render_img_path.name)
+                result = {
+                    'frame_name': normalized_frame_name,
+                    'original_render_name': render_img_path.stem,
+                    'gt_image': 'N/A',
+                    'render_time_sec': 0.1,
+                    'psnr': float('nan'),
+                    'ssim': float('nan'),
+                    'lpips': float('nan')
+                }
+                results.append(result)
         
         self.logger.info(f"Calculated metrics for {len(results)} image pairs")
         return results
@@ -1139,6 +1191,21 @@ class RenderingMethodsEvaluator:
         
         # 出力ディレクトリ作成
         self.output_dir.mkdir(parents=True, exist_ok=True)
+    
+    def normalize_frame_name(self, frame_name: str) -> str:
+        """フレーム名を正規化してマッピングを改善"""
+        # 拡張子を除去
+        frame_name = Path(frame_name).stem
+        
+        # 数値部分を抽出してゼロ埋め5桁に統一
+        import re
+        match = re.search(r'(\d+)', frame_name)
+        if match:
+            number = int(match.group(1))
+            # 「00000」形式に統一
+            return f"{number:05d}"
+        
+        return frame_name
     
     def _setup_logging(self) -> logging.Logger:
         """ログ設定"""
@@ -1310,15 +1377,24 @@ class RenderingMethodsEvaluator:
         return True
     
     def _save_results(self, blender_results: List[Dict], gs_results: List[Dict], gs_training_time: float):
-        """結果をCSVファイルに保存"""
+        """結果をCSVファイルに保存 - 正規化されたフレーム名でマッピング"""
         output_file = self.output_dir / "comparison_results.csv"
         
-        # 結果をフレーム名でマッピング
-        blender_dict = {r['ground_truth_image']: r for r in blender_results}
-        gs_dict = {r['frame_name']: r for r in gs_results}
+        # 結果を正規化されたフレーム名でマッピング
+        blender_dict = {r['frame_name']: r for r in blender_results}  # Blenderは既に正規化済み
+        gs_dict = {}
+        for r in gs_results:
+            # GS結果のフレーム名も正規化
+            normalized_name = self.normalize_frame_name(r['frame_name'])
+            gs_dict[normalized_name] = r
         
         # すべてのフレームを収集
         all_frames = set(blender_dict.keys()) | set(gs_dict.keys())
+        
+        self.logger.info(f"Frame mapping summary:")
+        self.logger.info(f"  Blender frames: {sorted(blender_dict.keys())[:5]}{'...' if len(blender_dict) > 5 else ''}")
+        self.logger.info(f"  GS frames: {sorted(gs_dict.keys())[:5]}{'...' if len(gs_dict) > 5 else ''}")
+        self.logger.info(f"  Total unique frames: {len(all_frames)}")
         
         with open(output_file, 'w', newline='') as f:
             fieldnames = [
@@ -1352,6 +1428,14 @@ class RenderingMethodsEvaluator:
                     'gs_lpips': gs_data.get('lpips', 'N/A')
                 }
                 writer.writerow(row)
+                
+                # デバッグ情報: マッチング状態をログ出力
+                if frame in blender_dict and frame in gs_dict:
+                    self.logger.debug(f"Frame {frame}: Both Blender and GS data available")
+                elif frame in blender_dict:
+                    self.logger.debug(f"Frame {frame}: Only Blender data available")
+                elif frame in gs_dict:
+                    self.logger.debug(f"Frame {frame}: Only GS data available")
         
         self.logger.info(f"Results saved to: {output_file}")
         
