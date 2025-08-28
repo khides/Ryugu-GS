@@ -424,6 +424,24 @@ class BlenderEvaluator:
                         
                         self.logger.debug(f"Loaded render time: {frame_name} ({stem_name}) = {time_sec}s")
                     
+                    # Frameカラムが数値の場合のフォーマット変換処理
+                    # ryugu_render_0001.png に対応する Frame=1 の変換
+                    try:
+                        frame_num = int(frame_name)
+                        # ryugu_render_XXXX 形式のキーを作成
+                        ryugu_key = f"ryugu_render_{frame_num:04d}"
+                        render_times[ryugu_key] = time_sec
+                        
+                        # .png 付きも作成
+                        ryugu_png_key = f"ryugu_render_{frame_num:04d}.png"
+                        render_times[ryugu_png_key] = time_sec
+                        
+                        self.logger.debug(f"Mapped frame {frame_num} -> {ryugu_key} = {time_sec}s")
+                        
+                    except ValueError:
+                        # frame_nameが数値でない場合はスキップ
+                        pass
+                    
             self.logger.info(f"Successfully loaded render times for {len(set(render_times.keys()))} unique frames")
             
             # サンプルデータを表示
@@ -623,12 +641,25 @@ class BlenderEvaluator:
                 if best_match:
                     # レンダー時間を取得 - 複数のパターンでマッチングを試行
                     render_time = 0.0
+                    # render_times.csvのFrameカラムが数値の場合のマッピングを考慮
                     possible_keys = [
-                        blender_img_path.name,      # フルファイル名 (e.g., "image001.png")
-                        blender_img_path.stem,      # 拡張子なし (e.g., "image001")
+                        blender_img_path.name,      # フルファイル名 (e.g., "ryugu_render_0001.png")
+                        blender_img_path.stem,      # 拡張子なし (e.g., "ryugu_render_0001")
                         blender_img_path.stem.replace('_', ''),  # アンダースコアなし
                         blender_img_path.stem.lower(),  # 小文字
                     ]
+                    
+                    # ryugu_render_0001 -> 1 の変換を試行
+                    try:
+                        # ryugu_render_XXXX 形式から番号を抽出
+                        if blender_img_path.stem.startswith('ryugu_render_'):
+                            num_str = blender_img_path.stem.replace('ryugu_render_', '')
+                            frame_num = int(num_str)
+                            possible_keys.append(str(frame_num))  # "1", "2", "3", ...
+                            possible_keys.append(f"{frame_num}")  # 同じだが明示的に
+                    except ValueError:
+                        # 番号抽出に失敗した場合はスキップ
+                        pass
                     
                     for key in possible_keys:
                         if key in render_times:
