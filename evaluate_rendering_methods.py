@@ -130,8 +130,8 @@ class ImagePreprocessor:
         # リサイズして中央に配置
         new_h, new_w = int(h * scale_factor), int(w * scale_factor)
         
-        if new_h > h or new_w > w:
-            # 縮小が必要
+        if scale_factor < 1:
+            # オブジェクトを縮小して黒キャンバスに配置
             resized = cv2.resize(image, (new_w, new_h))
             
             # 元のサイズのキャンバスを作成（黒背景）
@@ -148,8 +148,18 @@ class ImagePreprocessor:
             
             canvas[start_y:end_y, start_x:end_x] = resized
             return canvas
-        
-        return image
+        else:
+            # オブジェクトを拡大してから中央をクロップ
+            resized = cv2.resize(image, (new_w, new_h))
+            
+            # 中央をクロップして元のサイズに戻す
+            start_y = (new_h - h) // 2
+            start_x = (new_w - w) // 2
+            end_y = start_y + h
+            end_x = start_x + w
+            
+            cropped = resized[start_y:end_y, start_x:end_x]
+            return cropped
     
     def preprocess(self, image: np.ndarray) -> np.ndarray:
         """完全な前処理パイプライン"""
@@ -213,7 +223,19 @@ class MetricsCalculator:
             # サイズが異なる場合はリサイズ
             if img1_tensor.shape != img2_tensor.shape:
                 target_size = img1_tensor.shape[-2:]
-                img2_tensor = tf.resize(img2_tensor.squeeze(0), target_size).unsqueeze(0)
+                self.logger.debug(f"Resizing tensor from {img2_tensor.shape[-2:]} to {target_size}")
+                
+                # 安全なリサイズ処理
+                if len(img2_tensor.shape) == 4:  # バッチテンソル
+                    img2_tensor = tf.resize(img2_tensor.squeeze(0), target_size).unsqueeze(0)
+                elif len(img2_tensor.shape) == 3:  # 単一画像テンソル
+                    img2_tensor = tf.resize(img2_tensor, target_size).unsqueeze(0)
+                else:
+                    raise ValueError(f"Unexpected tensor shape: {img2_tensor.shape}")
+            
+            # 最終的な形状チェック
+            if img1_tensor.shape != img2_tensor.shape:
+                raise ValueError(f"Shape mismatch after resize: {img1_tensor.shape} vs {img2_tensor.shape}")
             
             psnr_val = self.calculate_psnr(img1_tensor, img2_tensor)
             ssim_val = self.calculate_ssim(img1_tensor, img2_tensor)
