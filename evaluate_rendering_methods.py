@@ -73,7 +73,8 @@ if not GS_UTILS_AVAILABLE:
             mse = torch.mean((img1 - img2) ** 2)
             if mse == 0:
                 return float('inf')
-            return 10.0 * torch.log10(1.0 / mse)
+            psnr_val = 10.0 * torch.log10(1.0 / mse)
+            return psnr_val.cpu().item() if torch.is_tensor(psnr_val) else float(psnr_val)
     
     def ssim(img1, img2):
         """Fallback SSIM implementation using scikit-image"""
@@ -96,7 +97,8 @@ if not GS_UTILS_AVAILABLE:
 
     def lpips(img1, img2, net_type='alex', version='0.1'):
         """Simple LPIPS fallback using L2 distance"""
-        return torch.mean((img1 - img2) ** 2).item()
+        l2_dist = torch.mean((img1 - img2) ** 2)
+        return l2_dist.cpu().item() if torch.is_tensor(l2_dist) else float(l2_dist)
 
     ssim = ssim
     psnr = psnr
@@ -299,7 +301,12 @@ class MetricsCalculator:
     def calculate_psnr(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """PSNR計算"""
         psnr_score = psnr(img1, img2)
-        return psnr_score.item() if hasattr(psnr_score, 'item') else psnr_score
+        if hasattr(psnr_score, 'item'):
+            return psnr_score.item()
+        elif torch.is_tensor(psnr_score):
+            return psnr_score.cpu().item()
+        else:
+            return float(psnr_score)
     
     def calculate_ssim(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """SSIM計算"""
@@ -307,14 +314,21 @@ class MetricsCalculator:
         if ssim is not None:
             try:
                 ssim_score = ssim(img1, img2)
-                return ssim_score.item() if hasattr(ssim_score, 'item') else ssim_score
+                if hasattr(ssim_score, 'item'):
+                    return ssim_score.item()
+                elif torch.is_tensor(ssim_score):
+                    return ssim_score.cpu().item()
+                else:
+                    return float(ssim_score)
             except Exception as e:
                 self.logger.debug(f"GS SSIM failed: {e}, trying custom implementation")
                 # フォールバック実装を使用
-                return self.gs_ssim(img1, img2).item()
+                result = self.gs_ssim(img1, img2)
+                return result.cpu().item() if torch.is_tensor(result) else float(result)
         
         # フォールバック実装
-        return self.gs_ssim(img1, img2).item()
+        result = self.gs_ssim(img1, img2)
+        return result.cpu().item() if torch.is_tensor(result) else float(result)
         
     def calculate_lpips(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """LPIPS計算"""
@@ -323,7 +337,10 @@ class MetricsCalculator:
             try:
                 with torch.no_grad():
                     lpips_val = self.lpips_fn(img1, img2)
-                    return lpips_val.item()
+                    if torch.is_tensor(lpips_val):
+                        return lpips_val.cpu().item()
+                    else:
+                        return float(lpips_val)
             except Exception as e:
                 self.logger.debug(f"LPIPS network failed: {e}")
         
@@ -332,7 +349,11 @@ class MetricsCalculator:
             self.logger.warning("LPIPS not available, using L2 distance as fallback")
             self._fallback_warnings_shown.add("lpips")
         
-        return lpips(img1, img2)
+        result = lpips(img1, img2)
+        if torch.is_tensor(result):
+            return result.cpu().item()
+        else:
+            return float(result)
     
     def image_to_tensor(self, image_path: Path) -> torch.Tensor:
         """画像をテンソルに変換"""
