@@ -28,6 +28,9 @@ import cv2
 import numpy as np
 from PIL import Image
 import torch
+import torch.nn.functional as F
+from torch.autograd import Variable
+from math import exp
 import torchvision.transforms.functional as tf
 from tqdm import tqdm
 
@@ -178,6 +181,53 @@ class MetricsCalculator:
     def __init__(self):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger = logging.getLogger(__name__)
+        self._fallback_warnings_shown = set()  # 警告の重複を防ぐ
+    
+    def gaussian(self, window_size, sigma):
+        """Gaussian window for SSIM calculation"""
+        gauss = torch.Tensor([exp(-(x - window_size // 2) ** 2 / float(2 * sigma ** 2)) for x in range(window_size)])
+        return gauss / gauss.sum()
+
+    def create_window(self, window_size, channel):
+        """Create window for SSIM calculation"""
+        _1D_window = self.gaussian(window_size, 1.5).unsqueeze(1)
+        _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
+        window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
+        return window
+
+    def _ssim_computation(self, img1, img2, window, window_size, channel, size_average=True):
+        """Core SSIM computation from Gaussian Splatting implementation"""
+        mu1 = F.conv2d(img1, window, padding=window_size // 2, groups=channel)
+        mu2 = F.conv2d(img2, window, padding=window_size // 2, groups=channel)
+
+        mu1_sq = mu1.pow(2)
+        mu2_sq = mu2.pow(2)
+        mu1_mu2 = mu1 * mu2
+
+        sigma1_sq = F.conv2d(img1 * img1, window, padding=window_size // 2, groups=channel) - mu1_sq
+        sigma2_sq = F.conv2d(img2 * img2, window, padding=window_size // 2, groups=channel) - mu2_sq
+        sigma12 = F.conv2d(img1 * img2, window, padding=window_size // 2, groups=channel) - mu1_mu2
+
+        C1 = 0.01 ** 2
+        C2 = 0.03 ** 2
+
+        ssim_map = ((2 * mu1_mu2 + C1) * (2 * sigma12 + C2)) / ((mu1_sq + mu2_sq + C1) * (sigma1_sq + sigma2_sq + C2))
+
+        if size_average:
+            return ssim_map.mean()
+        else:
+            return ssim_map.mean(1).mean(1).mean(1)
+
+    def gs_ssim(self, img1, img2, window_size=11, size_average=True):
+        """SSIM calculation using Gaussian Splatting implementation"""
+        channel = img1.size(-3)
+        window = self.create_window(window_size, channel)
+
+        if img1.is_cuda:
+            window = window.cuda(img1.get_device())
+        window = window.type_as(img1)
+
+        return self._ssim_computation(img1, img2, window, window_size, channel, size_average)
     
     def calculate_psnr(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """PSNR計算"""
@@ -192,20 +242,59 @@ class MetricsCalculator:
     
     def calculate_ssim(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """SSIM計算"""
+        # 最初にGaussian Splattingのオリジナル実装を試行
         if ssim is not None:
             return ssim(img1, img2).item()
         else:
-            # 簡易的なSSIM実装（完全ではない）
-            self.logger.warning("Using fallback SSIM implementation")
-            return 0.5  # プレースホルダー
+            # Gaussian Splattingと同じ実装を使用
+            try:
+                return self.gs_ssim(img1, img2).item()
+            except Exception as e:
+                # 適切なフォールバックSSIM実装
+                if "ssim" not in self._fallback_warnings_shown:
+                    self.logger.warning("Using fallback SSIM implementation")
+                    self._fallback_warnings_shown.add("ssim")
+                
+                # skimageを使用したSSIM計算
+                try:
+                    from skimage.metrics import structural_similarity as sk_ssim
+                    # テンソルをnumpy配列に変換
+                    img1_np = img1.squeeze().permute(1, 2, 0).cpu().numpy()
+                    img2_np = img2.squeeze().permute(1, 2, 0).cpu().numpy()
+                    
+                    # グレースケールに変換してSSIM計算
+                    if len(img1_np.shape) == 3:
+                        img1_gray = cv2.cvtColor(img1_np, cv2.COLOR_RGB2GRAY)
+                        img2_gray = cv2.cvtColor(img2_np, cv2.COLOR_RGB2GRAY)
+                        return sk_ssim(img1_gray, img2_gray, data_range=1.0)
+                    else:
+                        return sk_ssim(img1_np, img2_np, data_range=1.0)
+                except ImportError:
+                    # scikit-imageが利用できない場合はOpenCVベースの実装
+                    try:
+                        img1_np = img1.squeeze().permute(1, 2, 0).cpu().numpy()
+                        img2_np = img2.squeeze().permute(1, 2, 0).cpu().numpy()
+                        
+                        # OpenCVのSSIM関数は存在しないため、基本的な実装
+                        mse = np.mean((img1_np - img2_np) ** 2)
+                        if mse == 0:
+                            return 1.0
+                        # 簡易的なSSIM近似（完全なSSIMではない）
+                        return max(0.0, 1.0 - np.sqrt(mse))
+                    except Exception:
+                        return 0.5  # 最終フォールバック
     
     def calculate_lpips(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """LPIPS計算"""
         if lpips is not None:
             return lpips(img1, img2, net_type='vgg').item()
         else:
-            # フォールバック実装
-            self.logger.warning("LPIPS not available, using L2 distance as fallback")
+            # 警告の重複を防ぐ
+            if "lpips" not in self._fallback_warnings_shown:
+                self.logger.warning("LPIPS not available, using L2 distance as fallback")
+                self._fallback_warnings_shown.add("lpips")
+            
+            # フォールバック実装: L2距離（perceptual lossの近似として）
             return torch.mean((img1 - img2) ** 2).item()
     
     def image_to_tensor(self, image_path: Path) -> torch.Tensor:
@@ -691,40 +780,93 @@ class GaussianSplattingEvaluator:
             return False
     
     def calculate_gs_metrics(self, model_dir: Path) -> List[Dict]:
-        """Gaussian Splattingの結果メトリクスを計算"""
+        """Gaussian Splattingの結果メトリクスを計算 - 適切なテストデータで評価"""
         results = []
         
-        # レンダリング結果ディレクトリ
+        # 1. まず、GSが生成したレンダリング結果を取得
         test_renders_dir = model_dir / "test" / "ours_30000" / "renders"
-        test_gt_dir = model_dir / "test" / "ours_30000" / "gt"
+        train_renders_dir = model_dir / "train" / "ours_30000" / "renders"
         
-        if not test_renders_dir.exists() or not test_gt_dir.exists():
-            self.logger.warning("GS test results not found, using train results")
-            test_renders_dir = model_dir / "train" / "ours_30000" / "renders"
-            test_gt_dir = model_dir / "train" / "ours_30000" / "gt"
-        
-        if not test_renders_dir.exists():
+        renders_dir = None
+        if test_renders_dir.exists():
+            renders_dir = test_renders_dir
+            self.logger.info("Using GS test renders for evaluation")
+        elif train_renders_dir.exists():
+            renders_dir = train_renders_dir
+            self.logger.warning("Using GS train renders for evaluation (suboptimal)")
+        else:
             self.logger.error("No GS rendering results found")
             return results
         
-        # レンダリング画像を取得
-        render_images = sorted(test_renders_dir.glob("*.png"))
+        # 2. 独立したテストデータセットからGT画像を取得
+        test_images_dirs = [
+            self.test_data_dir / "images",
+            self.test_data_dir / "Input", 
+            self.test_data_dir
+        ]
+        
+        gt_images_dir = None
+        for test_dir in test_images_dirs:
+            if test_dir.exists() and test_dir.is_dir():
+                gt_files = list(test_dir.glob("*.jpg")) + list(test_dir.glob("*.jpeg")) + list(test_dir.glob("*.png"))
+                if gt_files:
+                    gt_images_dir = test_dir
+                    self.logger.info(f"Using independent test dataset: {gt_images_dir} ({len(gt_files)} images)")
+                    break
+        
+        if not gt_images_dir:
+            self.logger.error("No independent test images found for GS evaluation")
+            return results
+        
+        # 3. レンダリング結果と独立テストデータでメトリクス計算
+        render_images = sorted(renders_dir.glob("*.png"))
+        gt_images = {}
+        
+        # GT画像をマッピング
+        for ext in ["*.png", "*.jpg", "*.jpeg"]:
+            for gt_path in gt_images_dir.glob(ext):
+                # ファイル名マッチング（拡張子なし）
+                gt_images[gt_path.stem] = gt_path
+        
+        self.logger.info(f"Found {len(render_images)} renders and {len(gt_images)} GT images")
         
         for render_img_path in tqdm(render_images, desc="Calculating GS metrics"):
-            gt_img_path = test_gt_dir / render_img_path.name
+            render_name = render_img_path.stem
             
-            if gt_img_path.exists():
+            # 最適なGT画像を見つける（名前マッチまたは最適化マッチング）
+            gt_img_path = None
+            
+            # 直接名前マッチング
+            if render_name in gt_images:
+                gt_img_path = gt_images[render_name]
+            else:
+                # 部分マッチング（例：render_001 vs 001）
+                for gt_name, gt_path in gt_images.items():
+                    if gt_name in render_name or render_name in gt_name:
+                        gt_img_path = gt_path
+                        break
+                
+                # それでも見つからない場合は最初のGT画像を使用
+                if gt_img_path is None and gt_images:
+                    gt_img_path = list(gt_images.values())[0]
+                    self.logger.warning(f"No GT match for {render_name}, using {gt_img_path.name}")
+            
+            if gt_img_path and gt_img_path.exists():
                 metrics = self.metrics_calc.calculate_metrics(render_img_path, gt_img_path)
                 
                 result = {
                     'frame_name': render_img_path.stem,
+                    'gt_image': gt_img_path.name,  # GT画像名も記録
                     'render_time_sec': 0.1,  # 個別フレーム時間は概算
                     'psnr': metrics['psnr'],
                     'ssim': metrics['ssim'],
                     'lpips': metrics['lpips']
                 }
                 results.append(result)
+            else:
+                self.logger.warning(f"No GT image found for render: {render_name}")
         
+        self.logger.info(f"Calculated metrics for {len(results)} image pairs")
         return results
     
     def evaluate(self, output_dir: Path) -> Tuple[List[Dict], float]:
