@@ -1504,7 +1504,49 @@ class RenderingMethodsEvaluator:
             print(f"  Average SSIM: {avg_gs_ssim:.4f}")
             print(f"  Average LPIPS: {avg_gs_lpips:.4f}")
         
-        if blender_results or gs_results:
+        # 全データの総合比較（両方成功した場合のみ）
+        if blender_results and gs_results:
+            print(f"\n" + "="*80)
+            print("OVERALL COMPARISON SUMMARY")
+            print("="*80)
+            
+            # Blender全体平均
+            blender_avg_accuracy = np.nanmean([r['psnr'] for r in blender_results])
+            blender_avg_render_time = np.mean([r['render_time_sec'] for r in blender_results])
+            
+            # Gaussian Splatting全体平均  
+            gs_avg_accuracy = np.nanmean([r['psnr'] for r in gs_results])
+            gs_avg_render_time = np.mean([r['render_time_sec'] for r in gs_results])
+            
+            print(f"\nFINAL RESULTS - AVERAGE ACCURACY (PSNR):")
+            print(f"  Blender (Mesh-based):     {blender_avg_accuracy:.2f} dB")
+            print(f"  Gaussian Splatting:       {gs_avg_accuracy:.2f} dB")
+            
+            print(f"\nFINAL RESULTS - AVERAGE RENDER TIME:")
+            print(f"  Blender (Mesh-based):     {blender_avg_render_time:.3f} sec/frame")
+            print(f"  Gaussian Splatting:       {gs_avg_render_time:.3f} sec/frame")
+            print(f"  GS Training Time:         {gs_training_time:.1f} sec (one-time)")
+            
+            # 優位性の判定
+            if blender_avg_accuracy > gs_avg_accuracy:
+                accuracy_winner = "Blender"
+                accuracy_diff = blender_avg_accuracy - gs_avg_accuracy
+            else:
+                accuracy_winner = "Gaussian Splatting"
+                accuracy_diff = gs_avg_accuracy - blender_avg_accuracy
+                
+            if blender_avg_render_time < gs_avg_render_time:
+                speed_winner = "Blender"
+                speed_ratio = gs_avg_render_time / blender_avg_render_time
+            else:
+                speed_winner = "Gaussian Splatting"
+                speed_ratio = blender_avg_render_time / gs_avg_render_time
+            
+            print(f"\nCOMPARISON ANALYSIS:")
+            print(f"  Accuracy Winner:    {accuracy_winner} (+{accuracy_diff:.2f} dB advantage)")
+            print(f"  Speed Winner:       {speed_winner} ({speed_ratio:.1f}x faster)")
+            print("="*80)
+        elif blender_results or gs_results:
             print("\n" + "="*80)
         else:
             print("\n❌ BOTH EVALUATIONS FAILED - Please check the error messages above")
