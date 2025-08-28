@@ -507,19 +507,37 @@ class BlenderEvaluator:
             self.logger.error(f"Directory contents: {[f.name for f in all_files[:10]]}{'...' if len(all_files) > 10 else ''}")
             return []
         
-        # 評価用画像を取得
+        # 評価用画像を取得 - サブディレクトリも含めて検索
         test_images = []
+        # まず直接ディレクトリ内を検索
         for ext in ['*.png', '*.jpg', '*.jpeg']:
             test_images.extend(self.test_data_dir.glob(ext))
         
-        self.logger.info(f"Found {len(test_images)} test images in {self.test_data_dir}")
+        # 画像が見つからない場合、サブディレクトリも検索
+        if not test_images:
+            self.logger.info("No images in root test directory, searching subdirectories...")
+            subdirs_to_check = ['images', 'Input', 'test']
+            for subdir_name in subdirs_to_check:
+                subdir = self.test_data_dir / subdir_name
+                if subdir.exists() and subdir.is_dir():
+                    for ext in ['*.png', '*.jpg', '*.jpeg']:
+                        found_in_subdir = list(subdir.glob(ext))
+                        if found_in_subdir:
+                            test_images.extend(found_in_subdir)
+                            self.logger.info(f"Found {len(found_in_subdir)} images in {subdir}")
+                            break
+                    if test_images:
+                        break
+        
+        self.logger.info(f"Found {len(test_images)} test images total")
         
         if not test_images:
-            self.logger.error(f"No test images found in {self.test_data_dir}")
+            self.logger.error(f"No test images found in {self.test_data_dir} or its subdirectories")
             self.logger.error("Expected file extensions: *.png, *.jpg, *.jpeg")
+            self.logger.error("Searched in: root directory, images/, Input/, test/")
             # ディレクトリ内容を表示
             all_files = list(self.test_data_dir.iterdir()) if self.test_data_dir.exists() else []
-            self.logger.error(f"Directory contents: {[f.name for f in all_files[:10]]}{'...' if len(all_files) > 10 else ''}")
+            self.logger.error(f"Root directory contents: {[f.name for f in all_files[:10]]}{'...' if len(all_files) > 10 else ''}")
             return []
         
         results = []
@@ -1046,7 +1064,7 @@ class RenderingMethodsEvaluator:
                 self.logger.error(f"Required directory not found: {name} = {path}")
                 validation_passed = False
             else:
-                self.logger.info(f"✓ Found {name}: {path}")
+                self.logger.info(f"[OK] Found {name}: {path}")
         
         if not validation_passed:
             return False
@@ -1064,19 +1082,36 @@ class RenderingMethodsEvaluator:
                 self.logger.error(f"  ... and {len(all_files) - 10} more files")
             validation_passed = False
         else:
-            self.logger.info(f"✓ Found {len(blender_images)} Blender images")
+            self.logger.info(f"[OK] Found {len(blender_images)} Blender images")
         
         # render_times.csvの存在確認（警告のみ）
         render_times_file = self.blender_data_dir / "render_times.csv"
         if not render_times_file.exists():
             self.logger.warning(f"render_times.csv not found - render times will be 0.0")
         else:
-            self.logger.info(f"✓ Found render_times.csv")
+            self.logger.info(f"[OK] Found render_times.csv")
         
-        # 3. テストデータのチェック
+        # 3. テストデータのチェック - サブディレクトリも含めて検索
         test_images = []
+        # まず直接ディレクトリ内を検索
         for ext in ['*.png', '*.jpg', '*.jpeg']:
             test_images.extend(self.test_data_dir.glob(ext))
+        
+        # 画像が見つからない場合、サブディレクトリも検索
+        if not test_images:
+            self.logger.info("No images in root directory, searching subdirectories...")
+            subdirs_to_check = ['images', 'Input', 'test']
+            for subdir_name in subdirs_to_check:
+                subdir = self.test_data_dir / subdir_name
+                if subdir.exists() and subdir.is_dir():
+                    for ext in ['*.png', '*.jpg', '*.jpeg']:
+                        found_in_subdir = list(subdir.glob(ext))
+                        if found_in_subdir:
+                            test_images.extend(found_in_subdir)
+                            self.logger.info(f"Found {len(found_in_subdir)} images in {subdir}")
+                            break
+                    if test_images:
+                        break
         
         if not test_images:
             self.logger.error(f"No test images found in {self.test_data_dir}")
@@ -1087,7 +1122,7 @@ class RenderingMethodsEvaluator:
                 self.logger.error("Tip: Images should be directly in test_data_dir, not in subdirectories")
             validation_passed = False
         else:
-            self.logger.info(f"✓ Found {len(test_images)} test images")
+            self.logger.info(f"[OK] Found {len(test_images)} test images")
         
         # 4. Gaussian Splattingの必要ファイルチェック
         gs_train_py = self.gs_dir / "train.py"
@@ -1095,12 +1130,12 @@ class RenderingMethodsEvaluator:
             self.logger.error(f"train.py not found in Gaussian Splatting directory: {gs_train_py}")
             validation_passed = False
         else:
-            self.logger.info(f"✓ Found train.py in Gaussian Splatting directory")
+            self.logger.info(f"[OK] Found train.py in Gaussian Splatting directory")
         
         if validation_passed:
-            self.logger.info("✓ Environment validation passed")
+            self.logger.info("[OK] Environment validation passed")
         else:
-            self.logger.error("❌ Environment validation failed")
+            self.logger.error("[ERROR] Environment validation failed")
             self.logger.error("Please fix the issues above before running evaluation")
         
         return validation_passed
@@ -1215,6 +1250,24 @@ class RenderingMethodsEvaluator:
         print("\n" + "="*80)
         print("RENDERING METHODS EVALUATION SUMMARY")
         print("="*80)
+        
+        # 評価状態の表示
+        print(f"\nEVALUATION STATUS:")
+        print(f"  Blender results: {len(blender_results)} {'([OK] Success)' if blender_results else '([ERROR] Failed)'}")
+        print(f"  GS results: {len(gs_results)} {'([OK] Success)' if gs_results else '([ERROR] Failed)'}")
+        
+        if not blender_results:
+            print(f"\n[WARNING] BLENDER EVALUATION FAILED:")
+            print(f"  - All Blender metrics will show as 'N/A' in the CSV")
+            print(f"  - Check that blender_data_dir contains *.png/*.jpg files")
+            print(f"  - Check that test_data_dir contains ground truth images")
+            print(f"  - Review error logs above for specific issues")
+        
+        if not gs_results:
+            print(f"\n[WARNING] GAUSSIAN SPLATTING EVALUATION FAILED:")
+            print(f"  - All GS metrics will show as 'N/A' in the CSV")
+            print(f"  - Check training data format and directory structure")
+            print(f"  - Review error logs above for specific issues")
         
         # Blenderサマリー
         if blender_results:
