@@ -382,21 +382,6 @@ class GaussianSplattingEvaluator:
             self.train_data_dir / "train"
         ]
         
-        # COLMAP-style structure check
-        sparse_dirs = [
-            self.train_data_dir / "sparse" / "0",
-            self.train_data_dir / "sparse"
-        ]
-        
-        # Find actual sparse directory
-        sparse_dir = None
-        for d in sparse_dirs:
-            if d.exists() and d.is_dir():
-                required_files = ["cameras.bin", "images.bin", "points3D.bin"]
-                if all((d / f).exists() for f in required_files):
-                    sparse_dir = d
-                    break
-        
         # Check for images directories
         image_dirs = [
             self.train_data_dir / "images",
@@ -409,21 +394,50 @@ class GaussianSplattingEvaluator:
                 image_files = list(d.glob("*.jpg")) + list(d.glob("*.png"))
                 if image_files:
                     image_dir = d
+                    self.logger.info(f"Found images directory: {image_dir} ({len(image_files)} images)")
                     break
         
-        # Determine format
+        # COLMAP-style structure check (optional sparse directory)
+        sparse_dirs = [
+            self.train_data_dir / "sparse" / "0",
+            self.train_data_dir / "sparse"
+        ]
+        
+        sparse_dir = None
+        for d in sparse_dirs:
+            if d.exists() and d.is_dir():
+                required_files = ["cameras.bin", "images.bin", "points3D.bin"]
+                if all((d / f).exists() for f in required_files):
+                    sparse_dir = d
+                    self.logger.info(f"Found COLMAP sparse directory: {sparse_dir}")
+                    break
+        
+        # Determine format with flexible validation
         if all(p.exists() for p in nerf_paths):
             self.data_format = "nerf"
             self.logger.info("Detected NeRF-style data format")
-        elif sparse_dir and image_dir:
-            self.data_format = "colmap"
-            self.sparse_dir = sparse_dir
+        elif image_dir:
+            # Accept images-only format (will use COLMAP to reconstruct)
+            self.data_format = "images_only"
             self.image_dir = image_dir
-            self.logger.info(f"Detected COLMAP-style data format")
-            self.logger.info(f"  Sparse: {sparse_dir}")
-            self.logger.info(f"  Images: {image_dir}")
+            if sparse_dir:
+                self.data_format = "colmap"
+                self.sparse_dir = sparse_dir
+                self.logger.info("Detected full COLMAP-style data format")
+            else:
+                self.logger.info("Detected images-only format (COLMAP reconstruction required)")
+                self.logger.info("⚠️  Warning: No sparse reconstruction found. GS training may require COLMAP preprocessing.")
         else:
-            raise ValueError(f"Invalid training data format in {self.train_data_dir}")
+            # Provide detailed error message
+            available_files = []
+            if self.train_data_dir.exists():
+                available_files = [f.name for f in self.train_data_dir.iterdir()]
+            raise ValueError(
+                f"Invalid training data format in {self.train_data_dir}\n"
+                f"Expected: images/ directory with .jpg/.png files\n"
+                f"Found: {available_files}\n"
+                f"Please ensure the training directory contains an 'images' subdirectory with image files."
+            )
             
         self.logger.info(f"Data format: {self.data_format}")
     
@@ -448,6 +462,11 @@ class GaussianSplattingEvaluator:
             # COLMAP data: Always enable eval mode - GS will internally split data
             train_cmd.append("--eval")
             self.logger.info("COLMAP format - enabling evaluation mode with internal data splitting")
+        elif self.data_format == "images_only":
+            # Images-only: Enable eval mode for automatic splitting
+            train_cmd.append("--eval")
+            self.logger.info("Images-only format - enabling evaluation mode with automatic data splitting")
+            self.logger.info("⚠️  Note: GS will attempt COLMAP reconstruction automatically")
         elif self.data_format == "nerf":
             # NeRF format: Enable if we have explicit test set
             if (self.train_data_dir / "transforms_test.json").exists():
@@ -456,8 +475,8 @@ class GaussianSplattingEvaluator:
             else:
                 self.logger.info("NeRF format - no transforms_test.json found, training only")
         
-        # Add images directory specification for COLMAP data
-        if self.data_format == "colmap" and hasattr(self, 'image_dir'):
+        # Add images directory specification for COLMAP and images-only data
+        if self.data_format in ["colmap", "images_only"] and hasattr(self, 'image_dir'):
             try:
                 rel_image_path = self.image_dir.relative_to(self.train_data_dir)
                 train_cmd.extend(["--images", str(rel_image_path)])
@@ -861,8 +880,8 @@ Expected directory structure:
             print(f"  - {key}: {path}")
         
         print("\nPlease ensure you have:")
-        print("  1. Training data: data_input/BOX-A_train/ (COLMAP format with sparse/0/ and images/)")
-        print("  2. Test data: data_input/BOX-A_test/ (test images)")
+        print("  1. Training data: data_input/BOX-A_train/ (with images/ subdirectory)")
+        print("  2. Test data: data_input/BOX-A_test/ (with images/ subdirectory)")
         print("  3. Blender data: blender_data/ (with *.png files and render_times.csv)")
         print("  4. Gaussian Splatting: gaussian-splatting/ (with train.py)")
         print("\nAvailable datasets detected:")
