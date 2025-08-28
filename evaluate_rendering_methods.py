@@ -38,7 +38,9 @@ try:
     from lpipsPyTorch import lpips
     from utils.image_utils import psnr
 except ImportError:
-    print("Warning: Gaussian Splatting utils not found. Some functionality may be limited.")
+    print("Warning: Gaussian Splatting utils not found. Using fallback implementations.")
+    print("  To enable full functionality, ensure you're running from the gaussian-splatting directory")
+    print("  or that PYTHONPATH includes the gaussian-splatting directory.")
     ssim = None
     lpips = None
     psnr = None
@@ -692,11 +694,26 @@ Expected directory structure:
         'output_dir': args.output
     }
     
-    # ディレクトリ存在チェック
-    for key, path in config.items():
+    # 入力ディレクトリの存在チェック（出力ディレクトリは除外）
+    input_dirs = {k: v for k, v in config.items() if k != 'output_dir'}
+    missing_dirs = []
+    
+    for key, path in input_dirs.items():
         if not Path(path).exists():
-            print(f"Error: {key} directory not found: {path}")
-            return 1
+            missing_dirs.append((key, path))
+    
+    if missing_dirs:
+        print("Error: The following required directories were not found:")
+        for key, path in missing_dirs:
+            print(f"  - {key}: {path}")
+        
+        print("\nPlease ensure you have:")
+        print("  1. Training data: data_input/BOX-A_train/")
+        print("  2. Test data: data_input/BOX-A_test/") 
+        print("  3. Blender data: blender_data/ (with *.png files and render_times.csv)")
+        print("  4. Gaussian Splatting: gaussian-splatting/ (with train.py)")
+        print("\nSee EVALUATION_GUIDE.md for detailed setup instructions.")
+        return 1
     
     try:
         # 評価実行
