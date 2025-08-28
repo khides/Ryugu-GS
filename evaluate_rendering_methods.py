@@ -16,12 +16,11 @@ import argparse
 import csv
 import json
 import logging
-import os
 import sys
 import time
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple
 from dataclasses import dataclass
 import math
 
@@ -482,23 +481,44 @@ class GaussianSplattingEvaluator:
         start_time = time.time()
         
         try:
-            process = subprocess.run(
+            # Use Popen for real-time output
+            process = subprocess.Popen(
                 train_cmd,
                 cwd=str(self.gs_dir),
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
-                timeout=3600  # 1時間タイムアウト
+                bufsize=1,
+                universal_newlines=True
             )
             
+            self.logger.info("🔄 GS Training started - showing real-time output:")
+            self.logger.info("─" * 60)
+            
+            output_lines = []
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    # Log each line in real-time
+                    line = output.strip()
+                    print(f"GS: {line}")
+                    self.logger.info(line)
+                    output_lines.append(line)
+            
+            # Wait for process completion
+            process.wait()
             training_time = time.time() - start_time
             
             if process.returncode != 0:
                 self.logger.error(f"GS training failed with return code {process.returncode}")
-                self.logger.error(f"STDERR: {process.stderr}")
-                self.logger.error(f"STDOUT: {process.stdout}")
+                full_output = "\n".join(output_lines)
+                self.logger.error(f"Full output: {full_output}")
                 return False, training_time
             
-            self.logger.info(f"GS training completed in {training_time:.2f} seconds")
+            self.logger.info("─" * 60)
+            self.logger.info(f"✓ GS training completed in {training_time:.2f} seconds")
             return True, training_time
             
         except subprocess.TimeoutExpired:
@@ -518,19 +538,41 @@ class GaussianSplattingEvaluator:
         ]
         
         try:
-            process = subprocess.run(
+            # Use Popen for real-time output
+            process = subprocess.Popen(
                 render_cmd,
                 cwd=str(self.gs_dir),
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
                 text=True,
-                timeout=1800  # 30分タイムアウト
+                bufsize=1,
+                universal_newlines=True
             )
             
+            self.logger.info("🔄 GS Rendering started - showing real-time output:")
+            self.logger.info("─" * 60)
+            
+            output_lines = []
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    line = output.strip()
+                    print(f"GS Render: {line}")
+                    self.logger.info(line)
+                    output_lines.append(line)
+            
+            process.wait()
+            
             if process.returncode != 0:
-                self.logger.error(f"GS rendering failed: {process.stderr}")
+                self.logger.error(f"GS rendering failed with return code {process.returncode}")
+                full_output = "\n".join(output_lines)
+                self.logger.error(f"Full output: {full_output}")
                 return False
             
-            self.logger.info("GS rendering completed")
+            self.logger.info("─" * 60)
+            self.logger.info("✓ GS rendering completed")
             return True
             
         except subprocess.TimeoutExpired:
@@ -616,15 +658,30 @@ class RenderingMethodsEvaluator:
     
     def _setup_logging(self) -> logging.Logger:
         """ログ設定"""
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler('evaluation.log'),
-                logging.StreamHandler(sys.stdout)
-            ]
-        )
-        return logging.getLogger(__name__)
+        # Clear any existing handlers
+        logging.getLogger().handlers.clear()
+        
+        # Create formatter
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        
+        # File handler
+        file_handler = logging.FileHandler('evaluation.log')
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+        
+        # Console handler  
+        console_handler = logging.StreamHandler(sys.stdout)
+        console_handler.setLevel(logging.INFO)
+        console_formatter = logging.Formatter('%(levelname)s: %(message)s')
+        console_handler.setFormatter(console_formatter)
+        
+        # Configure logger
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(file_handler)
+        logger.addHandler(console_handler)
+        
+        return logger
     
     def run_evaluation(self) -> bool:
         """完全な評価を実行"""
@@ -768,9 +825,9 @@ Expected directory structure:
         """
     )
     
-    parser.add_argument("--train-data", type=str, default="data_input/merged",
+    parser.add_argument("--train-data", type=str, default="data_input/BOX-A_train",
                         help="Training dataset directory (for GS)")
-    parser.add_argument("--test-data", type=str, default="data_input/nerf_blender_qiita/test", 
+    parser.add_argument("--test-data", type=str, default="data_input/BOX-A_test", 
                         help="Test dataset directory (for evaluation)")
     parser.add_argument("--blender-data", type=str, default="blender_data",
                         help="Blender rendering data directory")
@@ -804,8 +861,8 @@ Expected directory structure:
             print(f"  - {key}: {path}")
         
         print("\nPlease ensure you have:")
-        print("  1. Training data: data_input/merged/ (COLMAP format with sparse/0/ and images/)")
-        print("  2. Test data: data_input/nerf_blender_qiita/test/ (test images)")
+        print("  1. Training data: data_input/BOX-A_train/ (COLMAP format with sparse/0/ and images/)")
+        print("  2. Test data: data_input/BOX-A_test/ (test images)")
         print("  3. Blender data: blender_data/ (with *.png files and render_times.csv)")
         print("  4. Gaussian Splatting: gaussian-splatting/ (with train.py)")
         print("\nAvailable datasets detected:")
