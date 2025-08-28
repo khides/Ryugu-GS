@@ -360,6 +360,11 @@ class BlenderEvaluator:
         render_times_file = self.blender_data_dir / "render_times.csv"
         render_times = {}
         
+        if not render_times_file.exists():
+            self.logger.warning(f"render_times.csv not found at {render_times_file}")
+            self.logger.warning("All Blender render times will be set to 0.0")
+            return render_times
+        
         try:
             with open(render_times_file, 'r') as f:
                 reader = csv.DictReader(f)
@@ -368,67 +373,107 @@ class BlenderEvaluator:
                     frame_name = row.get('frame', row.get('filename', ''))
                     time_sec = float(row.get('time_sec', row.get('time', 0.0)))
                     render_times[frame_name] = time_sec
+                    
+            self.logger.debug(f"Successfully loaded render times for {len(render_times)} frames")
+            
         except Exception as e:
-            self.logger.error(f"Error loading render times: {e}")
+            self.logger.error(f"Error loading render times from {render_times_file}: {e}")
+            # CSVファイルの内容をサンプル表示
+            try:
+                with open(render_times_file, 'r') as f:
+                    sample_lines = f.readlines()[:5]
+                    self.logger.error(f"CSV file sample (first 5 lines):")
+                    for i, line in enumerate(sample_lines):
+                        self.logger.error(f"  Line {i+1}: {line.strip()}")
+            except:
+                pass
             
         return render_times
     
     def find_best_match(self, blender_image_path: Path, test_images: List[Path]) -> Tuple[Path, Dict[str, float]]:
         """Blenderレンダリング画像に最も近い評価用画像を見つける"""
+        self.logger.debug(f"Finding best match for {blender_image_path.name} among {len(test_images)} test images")
+        
         # Blender画像を前処理
         blender_img = cv2.imread(str(blender_image_path))
         if blender_img is None:
-            raise ValueError(f"Cannot load Blender image: {blender_image_path}")
+            raise ValueError(f"Cannot load Blender image: {blender_image_path} (check file format and permissions)")
         
-        processed_blender_img = self.preprocessor.preprocess(blender_img)
+        try:
+            processed_blender_img = self.preprocessor.preprocess(blender_img)
+        except Exception as e:
+            raise ValueError(f"Failed to preprocess Blender image {blender_image_path}: {e}")
         
         best_match = None
         best_metrics = None
         best_score = float('-inf')
+        processed_count = 0
         
         # 一時ファイルとして保存
         temp_blender_path = self.blender_data_dir / "temp_processed_blender.png"
-        cv2.imwrite(str(temp_blender_path), processed_blender_img)
+        try:
+            success = cv2.imwrite(str(temp_blender_path), processed_blender_img)
+            if not success:
+                raise ValueError(f"Failed to save processed Blender image to {temp_blender_path}")
+        except Exception as e:
+            raise ValueError(f"Error saving processed Blender image: {e}")
         
         try:
             for test_image_path in test_images:
-                # テスト画像を前処理
-                test_img = cv2.imread(str(test_image_path))
-                if test_img is None:
-                    continue
-                
-                processed_test_img = self.preprocessor.preprocess(test_img)
-                
-                # 一時ファイルとして保存
-                temp_test_path = self.test_data_dir / "temp_processed_test.png"
-                cv2.imwrite(str(temp_test_path), processed_test_img)
-                
-                # メトリクスを計算
-                metrics = self.metrics_calc.calculate_metrics(temp_blender_path, temp_test_path)
-                
-                # スコア計算（PSNR+SSIM-LPIPS の組み合わせ）
-                if not (math.isnan(metrics['psnr']) or math.isnan(metrics['ssim']) or math.isnan(metrics['lpips'])):
-                    score = metrics['psnr'] / 50.0 + metrics['ssim'] - metrics['lpips']
+                try:
+                    # テスト画像を前処理
+                    test_img = cv2.imread(str(test_image_path))
+                    if test_img is None:
+                        self.logger.debug(f"Cannot load test image: {test_image_path}")
+                        continue
                     
-                    if score > best_score:
-                        best_score = score
-                        best_match = test_image_path
-                        best_metrics = metrics
-                
-                # 一時ファイル削除
-                if temp_test_path.exists():
-                    temp_test_path.unlink()
+                    processed_test_img = self.preprocessor.preprocess(test_img)
+                    
+                    # 一時ファイルとして保存
+                    temp_test_path = self.test_data_dir / "temp_processed_test.png"
+                    success = cv2.imwrite(str(temp_test_path), processed_test_img)
+                    if not success:
+                        self.logger.debug(f"Failed to save processed test image {test_image_path}")
+                        continue
+                    
+                    # メトリクスを計算
+                    metrics = self.metrics_calc.calculate_metrics(temp_blender_path, temp_test_path)
+                    processed_count += 1
+                    
+                    # スコア計算（PSNR+SSIM-LPIPS の組み合わせ）
+                    if not (math.isnan(metrics['psnr']) or math.isnan(metrics['ssim']) or math.isnan(metrics['lpips'])):
+                        score = metrics['psnr'] / 50.0 + metrics['ssim'] - metrics['lpips']
+                        
+                        if score > best_score:
+                            best_score = score
+                            best_match = test_image_path
+                            best_metrics = metrics
+                            self.logger.debug(f"New best match: {test_image_path.name} with score {score:.4f}")
+                    
+                    # 一時ファイル削除
+                    if temp_test_path.exists():
+                        temp_test_path.unlink()
+                        
+                except Exception as e:
+                    self.logger.debug(f"Error processing test image {test_image_path}: {e}")
+                    continue
             
         finally:
             # 一時ファイル削除
             if temp_blender_path.exists():
                 temp_blender_path.unlink()
         
+        self.logger.debug(f"Processed {processed_count} test images for {blender_image_path.name}")
+        
         if best_match is None:
+            self.logger.warning(f"No valid metrics computed for {blender_image_path.name}")
             # フォールバック: 最初の利用可能な画像
             if test_images:
+                self.logger.debug(f"Using fallback match: {test_images[0].name}")
                 best_match = test_images[0]
                 best_metrics = {'psnr': float('nan'), 'ssim': float('nan'), 'lpips': float('nan')}
+            else:
+                raise ValueError(f"No test images available for comparison with {blender_image_path}")
         
         return best_match, best_metrics
     
@@ -436,21 +481,54 @@ class BlenderEvaluator:
         """Blenderレンダリングの評価を実行"""
         self.logger.info("Starting Blender evaluation...")
         
+        # 事前チェック: Blenderデータディレクトリの存在確認
+        if not self.blender_data_dir.exists():
+            self.logger.error(f"Blender data directory not found: {self.blender_data_dir}")
+            return []
+        
+        # 事前チェック: テストデータディレクトリの存在確認
+        if not self.test_data_dir.exists():
+            self.logger.error(f"Test data directory not found: {self.test_data_dir}")
+            return []
+        
         # レンダリング時間を読み込み
         render_times = self.load_render_times()
+        self.logger.info(f"Loaded {len(render_times)} render time entries")
         
         # Blenderレンダリング画像を取得
         blender_images = list(self.blender_data_dir.glob("*.png")) + list(self.blender_data_dir.glob("*.jpg")) + list(self.blender_data_dir.glob("*.jpeg"))
+        self.logger.info(f"Found {len(blender_images)} Blender images in {self.blender_data_dir}")
+        
+        if not blender_images:
+            self.logger.error(f"No Blender rendering images found in {self.blender_data_dir}")
+            self.logger.error("Expected file extensions: *.png, *.jpg, *.jpeg")
+            # ディレクトリ内容を表示
+            all_files = list(self.blender_data_dir.iterdir())
+            self.logger.error(f"Directory contents: {[f.name for f in all_files[:10]]}{'...' if len(all_files) > 10 else ''}")
+            return []
         
         # 評価用画像を取得
         test_images = []
         for ext in ['*.png', '*.jpg', '*.jpeg']:
             test_images.extend(self.test_data_dir.glob(ext))
         
+        self.logger.info(f"Found {len(test_images)} test images in {self.test_data_dir}")
+        
+        if not test_images:
+            self.logger.error(f"No test images found in {self.test_data_dir}")
+            self.logger.error("Expected file extensions: *.png, *.jpg, *.jpeg")
+            # ディレクトリ内容を表示
+            all_files = list(self.test_data_dir.iterdir()) if self.test_data_dir.exists() else []
+            self.logger.error(f"Directory contents: {[f.name for f in all_files[:10]]}{'...' if len(all_files) > 10 else ''}")
+            return []
+        
         results = []
+        failed_evaluations = 0
         
         for blender_img_path in tqdm(blender_images, desc="Evaluating Blender renders"):
             try:
+                self.logger.debug(f"Evaluating Blender image: {blender_img_path}")
+                
                 # 最適なマッチを見つける
                 best_match, metrics = self.find_best_match(blender_img_path, test_images)
                 
@@ -464,11 +542,27 @@ class BlenderEvaluator:
                         'lpips': metrics['lpips']
                     }
                     results.append(result)
+                    self.logger.debug(f"Successfully evaluated {blender_img_path.name}")
+                else:
+                    self.logger.warning(f"No matching test image found for {blender_img_path.name}")
+                    failed_evaluations += 1
                 
             except Exception as e:
                 self.logger.error(f"Error evaluating {blender_img_path}: {e}")
+                import traceback
+                self.logger.error(f"Traceback: {traceback.format_exc()}")
+                failed_evaluations += 1
         
-        self.logger.info(f"Completed Blender evaluation: {len(results)} results")
+        self.logger.info(f"Completed Blender evaluation: {len(results)} successful, {failed_evaluations} failed")
+        
+        if len(results) == 0:
+            self.logger.error("No successful Blender evaluations - all returned N/A")
+            self.logger.error("Common causes:")
+            self.logger.error("  1. Missing render_times.csv in Blender data directory")
+            self.logger.error("  2. Blender image files cannot be loaded")
+            self.logger.error("  3. Test images cannot be loaded")
+            self.logger.error("  4. Image preprocessing or metrics calculation failed")
+        
         return results
 
 
@@ -933,14 +1027,99 @@ class RenderingMethodsEvaluator:
         
         return logger
     
+    def _validate_environment(self) -> bool:
+        """実行前の環境検証"""
+        self.logger.info("Validating evaluation environment...")
+        
+        validation_passed = True
+        
+        # 1. 必須ディレクトリの存在確認
+        required_dirs = {
+            'train_data_dir': self.train_data_dir,
+            'test_data_dir': self.test_data_dir,
+            'blender_data_dir': self.blender_data_dir,
+            'gaussian_splatting_dir': self.gs_dir
+        }
+        
+        for name, path in required_dirs.items():
+            if not path.exists():
+                self.logger.error(f"Required directory not found: {name} = {path}")
+                validation_passed = False
+            else:
+                self.logger.info(f"✓ Found {name}: {path}")
+        
+        if not validation_passed:
+            return False
+        
+        # 2. Blenderデータの詳細チェック
+        blender_images = list(self.blender_data_dir.glob("*.png")) + list(self.blender_data_dir.glob("*.jpg")) + list(self.blender_data_dir.glob("*.jpeg"))
+        if not blender_images:
+            self.logger.error(f"No Blender images found in {self.blender_data_dir}")
+            # ディレクトリ内容を詳細表示
+            all_files = list(self.blender_data_dir.iterdir())
+            self.logger.error(f"Directory contains {len(all_files)} files:")
+            for f in all_files[:10]:  # 最初の10ファイルを表示
+                self.logger.error(f"  - {f.name}")
+            if len(all_files) > 10:
+                self.logger.error(f"  ... and {len(all_files) - 10} more files")
+            validation_passed = False
+        else:
+            self.logger.info(f"✓ Found {len(blender_images)} Blender images")
+        
+        # render_times.csvの存在確認（警告のみ）
+        render_times_file = self.blender_data_dir / "render_times.csv"
+        if not render_times_file.exists():
+            self.logger.warning(f"render_times.csv not found - render times will be 0.0")
+        else:
+            self.logger.info(f"✓ Found render_times.csv")
+        
+        # 3. テストデータのチェック
+        test_images = []
+        for ext in ['*.png', '*.jpg', '*.jpeg']:
+            test_images.extend(self.test_data_dir.glob(ext))
+        
+        if not test_images:
+            self.logger.error(f"No test images found in {self.test_data_dir}")
+            # サブディレクトリもチェック
+            subdirs = [d for d in self.test_data_dir.iterdir() if d.is_dir()]
+            if subdirs:
+                self.logger.error(f"Found subdirectories: {[d.name for d in subdirs]}")
+                self.logger.error("Tip: Images should be directly in test_data_dir, not in subdirectories")
+            validation_passed = False
+        else:
+            self.logger.info(f"✓ Found {len(test_images)} test images")
+        
+        # 4. Gaussian Splattingの必要ファイルチェック
+        gs_train_py = self.gs_dir / "train.py"
+        if not gs_train_py.exists():
+            self.logger.error(f"train.py not found in Gaussian Splatting directory: {gs_train_py}")
+            validation_passed = False
+        else:
+            self.logger.info(f"✓ Found train.py in Gaussian Splatting directory")
+        
+        if validation_passed:
+            self.logger.info("✓ Environment validation passed")
+        else:
+            self.logger.error("❌ Environment validation failed")
+            self.logger.error("Please fix the issues above before running evaluation")
+        
+        return validation_passed
+    
     def run_evaluation(self) -> bool:
         """完全な評価を実行"""
         self.logger.info("Starting comprehensive rendering methods evaluation...")
+        
+        # 事前検証
+        if not self._validate_environment():
+            return False
         
         # 1. Blender評価
         self.logger.info("Phase 1: Blender evaluation")
         blender_evaluator = BlenderEvaluator(self.blender_data_dir, self.test_data_dir)
         blender_results = blender_evaluator.evaluate()
+        
+        if not blender_results:
+            self.logger.error("Blender evaluation returned no results - check logs above")
         
         # 2. Gaussian Splatting評価
         self.logger.info("Phase 2: Gaussian Splatting evaluation")
@@ -950,12 +1129,26 @@ class RenderingMethodsEvaluator:
         )
         gs_results, gs_training_time = gs_evaluator.evaluate(gs_output_dir)
         
+        if not gs_results:
+            self.logger.error("Gaussian Splatting evaluation returned no results - check logs above")
+        
         # 3. 結果の集計と出力
         self.logger.info("Phase 3: Results aggregation")
         self._save_results(blender_results, gs_results, gs_training_time)
         
         # 4. サマリーの表示
         self._print_summary(blender_results, gs_results, gs_training_time)
+        
+        # 5. 最終ステータス
+        if not blender_results and not gs_results:
+            self.logger.error("Both evaluations failed - no results to report")
+            return False
+        elif not blender_results:
+            self.logger.warning("Only Gaussian Splatting evaluation succeeded")
+        elif not gs_results:
+            self.logger.warning("Only Blender evaluation succeeded")
+        else:
+            self.logger.info("Both evaluations completed successfully")
         
         return True
     
@@ -1052,7 +1245,11 @@ class RenderingMethodsEvaluator:
             print(f"  Average SSIM: {avg_gs_ssim:.4f}")
             print(f"  Average LPIPS: {avg_gs_lpips:.4f}")
         
-        print("\n" + "="*80)
+        if blender_results or gs_results:
+            print("\n" + "="*80)
+        else:
+            print("\n❌ BOTH EVALUATIONS FAILED - Please check the error messages above")
+            print("="*80)
 
 
 def main():
