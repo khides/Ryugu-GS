@@ -329,7 +329,7 @@ class BlenderEvaluator:
         render_times = self.load_render_times()
         
         # Blenderレンダリング画像を取得
-        blender_images = list(self.blender_data_dir.glob("*.png")) + list(self.blender_data_dir.glob("*.jpg"))
+        blender_images = list(self.blender_data_dir.glob("*.png")) + list(self.blender_data_dir.glob("*.jpg")) + list(self.blender_data_dir.glob("*.jpeg"))
         
         # 評価用画像を取得
         test_images = []
@@ -391,7 +391,7 @@ class GaussianSplattingEvaluator:
         image_dir = None
         for d in image_dirs:
             if d.exists() and d.is_dir():
-                image_files = list(d.glob("*.jpg")) + list(d.glob("*.png"))
+                image_files = list(d.glob("*.jpg")) + list(d.glob("*.jpeg")) + list(d.glob("*.png"))
                 if image_files:
                     image_dir = d
                     self.logger.info(f"Found images directory: {image_dir} ({len(image_files)} images)")
@@ -434,7 +434,7 @@ class GaussianSplattingEvaluator:
                 available_files = [f.name for f in self.train_data_dir.iterdir()]
             raise ValueError(
                 f"Invalid training data format in {self.train_data_dir}\n"
-                f"Expected: images/ directory with .jpg/.png files\n"
+                f"Expected: images/ directory with .jpg/.jpeg/.png files\n"
                 f"Found: {available_files}\n"
                 f"Please ensure the training directory contains an 'images' subdirectory with image files."
             )
