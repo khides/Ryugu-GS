@@ -441,6 +441,67 @@ class GaussianSplattingEvaluator:
             
         self.logger.info(f"Data format: {self.data_format}")
     
+    def diagnose_gaussian_splatting_error(self, stderr: str) -> dict:
+        """Diagnose common Gaussian Splatting errors and provide suggestions"""
+        diagnosis = {
+            "diagnosis": "Unknown error",
+            "suggestions": []
+        }
+        
+        stderr_lower = stderr.lower()
+        
+        if "could not recognize scene type" in stderr_lower:
+            diagnosis["diagnosis"] = "Invalid data format or path resolution issue"
+            diagnosis["suggestions"] = [
+                "Ensure data directory contains either COLMAP format (sparse/0/) or NeRF format (transforms*.json)",
+                "Check that working directory is correct when running the script",
+                "Try using absolute paths instead of relative paths",
+                "Verify that images/ or Input/ directory exists and contains images",
+                "For COLMAP data: check that sparse/0/cameras.bin, images.bin, points3D.bin exist"
+            ]
+        elif "ページング ファイルが小さすぎる" in stderr or "paging file" in stderr_lower:
+            diagnosis["diagnosis"] = "Virtual memory (page file) insufficient"
+            diagnosis["suggestions"] = [
+                "Increase Windows virtual memory (page file) size to at least 8GB",
+                "Close other memory-intensive applications",
+                "Consider upgrading system RAM"
+            ]
+        elif ("out of memory" in stderr_lower or "cuda out of memory" in stderr_lower or 
+              "cublas_status_alloc_failed" in stderr_lower or "cublascreate" in stderr_lower):
+            diagnosis["diagnosis"] = "GPU memory exhausted"
+            diagnosis["suggestions"] = [
+                "Close other GPU-intensive applications (check with nvidia-smi)",
+                "Use memory-optimized training: --resolution 2 --data_device cpu",
+                "Reduce image resolution or number of training images",
+                "Try: python train.py -s <data> --resolution 4 --data_device cpu --sh_degree 2",
+                "Consider using a GPU with more VRAM (8GB+ recommended)"
+            ]
+        elif "cudnn" in stderr_lower and ("dll" in stderr_lower or "library" in stderr_lower):
+            diagnosis["diagnosis"] = "CUDA/cuDNN library loading failure"
+            diagnosis["suggestions"] = [
+                "Verify CUDA toolkit installation matches PyTorch CUDA version",
+                "Check PyTorch CUDA support installation",
+                "Try CPU-only mode if GPU is not required",
+                "Restart system to refresh library paths"
+            ]
+        elif "torch" in stderr_lower and ("import" in stderr_lower or "module" in stderr_lower):
+            diagnosis["diagnosis"] = "PyTorch installation or import issue"
+            diagnosis["suggestions"] = [
+                "Verify PyTorch installation",
+                "Check Python environment activation",
+                "Reinstall PyTorch with CUDA support if needed"
+            ]
+        elif "file not found" in stderr_lower or "no such file" in stderr_lower:
+            diagnosis["diagnosis"] = "Missing input files or incorrect data structure"
+            diagnosis["suggestions"] = [
+                "Verify input data path and structure",
+                "Check that COLMAP reconstruction files exist",
+                "Ensure images directory contains source images",
+                "Run with absolute paths instead of relative paths"
+            ]
+        
+        return diagnosis
+    
     def run_gs_training(self, output_dir: Path) -> Tuple[bool, float]:
         """Gaussian Splattingの学習を実行"""
         self.logger.info("Starting Gaussian Splatting training...")
@@ -457,26 +518,25 @@ class GaussianSplattingEvaluator:
             "--data_device", "cpu",  # Store images in CPU memory
         ]
         
-        # Enable eval mode based on data format
-        if self.data_format == "colmap":
+        # Enable eval mode based on data format - simplified logic
+        if hasattr(self, 'data_format') and self.data_format == "colmap":
             # COLMAP data: Always enable eval mode - GS will internally split data
             train_cmd.append("--eval")
             self.logger.info("COLMAP format - enabling evaluation mode with internal data splitting")
-        elif self.data_format == "images_only":
-            # Images-only: Enable eval mode for automatic splitting
-            train_cmd.append("--eval")
-            self.logger.info("Images-only format - enabling evaluation mode with automatic data splitting")
-            self.logger.info("⚠️  Note: GS will attempt COLMAP reconstruction automatically")
-        elif self.data_format == "nerf":
+        elif hasattr(self, 'data_format') and self.data_format == "nerf":
             # NeRF format: Enable if we have explicit test set
             if (self.train_data_dir / "transforms_test.json").exists():
                 train_cmd.append("--eval")
                 self.logger.info("NeRF format - enabling evaluation mode with explicit test set")
             else:
                 self.logger.info("NeRF format - no transforms_test.json found, training only")
+        elif hasattr(self, 'data_format') and self.data_format == "images_only":
+            # Images-only: Enable eval mode for automatic splitting
+            train_cmd.append("--eval")
+            self.logger.info("Images-only format - enabling evaluation mode with automatic data splitting")
         
         # Add images directory specification for COLMAP and images-only data
-        if self.data_format in ["colmap", "images_only"] and hasattr(self, 'image_dir'):
+        if hasattr(self, 'data_format') and self.data_format in ["colmap", "images_only"] and hasattr(self, 'image_dir'):
             try:
                 rel_image_path = self.image_dir.relative_to(self.train_data_dir)
                 train_cmd.extend(["--images", str(rel_image_path)])
@@ -520,10 +580,9 @@ class GaussianSplattingEvaluator:
                 if output == '' and process.poll() is not None:
                     break
                 if output:
-                    # Log each line in real-time
+                    # Log each line in real-time - streamlined output
                     line = output.strip()
-                    print(f"GS: {line}")
-                    self.logger.info(line)
+                    print(line)  # Direct print to avoid buffering issues
                     output_lines.append(line)
             
             # Wait for process completion
@@ -531,9 +590,18 @@ class GaussianSplattingEvaluator:
             training_time = time.time() - start_time
             
             if process.returncode != 0:
-                self.logger.error(f"GS training failed with return code {process.returncode}")
                 full_output = "\n".join(output_lines)
-                self.logger.error(f"Full output: {full_output}")
+                
+                # Provide detailed error diagnosis
+                error_diagnosis = self.diagnose_gaussian_splatting_error(full_output)
+                self.logger.error(f"❌ GAUSSIAN SPLATTING TRAINING FAILED")
+                self.logger.error(f"Error Diagnosis: {error_diagnosis['diagnosis']}")
+                if error_diagnosis['suggestions']:
+                    self.logger.error(f"Suggestions:")
+                    for suggestion in error_diagnosis['suggestions']:
+                        self.logger.error(f"  • {suggestion}")
+                
+                self.logger.error(f"Return code: {process.returncode}")
                 return False, training_time
             
             self.logger.info("─" * 60)
@@ -578,8 +646,7 @@ class GaussianSplattingEvaluator:
                     break
                 if output:
                     line = output.strip()
-                    print(f"GS Render: {line}")
-                    self.logger.info(line)
+                    print(line)  # Direct print to avoid buffering issues
                     output_lines.append(line)
             
             process.wait()
