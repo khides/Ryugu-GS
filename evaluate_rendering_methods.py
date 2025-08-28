@@ -426,7 +426,7 @@ class GaussianSplattingEvaluator:
                 self.logger.info("Detected full COLMAP-style data format")
             else:
                 self.logger.info("Detected images-only format (COLMAP reconstruction required)")
-                self.logger.info("⚠️  Warning: No sparse reconstruction found. GS training may require COLMAP preprocessing.")
+                self.logger.info("[WARN] No sparse reconstruction found. GS training may require COLMAP preprocessing.")
         else:
             # Provide detailed error message
             available_files = []
@@ -459,7 +459,7 @@ class GaussianSplattingEvaluator:
                 "Verify that images/ or Input/ directory exists and contains images",
                 "For COLMAP data: check that sparse/0/cameras.bin, images.bin, points3D.bin exist"
             ]
-        elif "ページング ファイルが小さすぎる" in stderr or "paging file" in stderr_lower:
+        elif "paging file" in stderr_lower or "virtual memory" in stderr_lower:
             diagnosis["diagnosis"] = "Virtual memory (page file) insufficient"
             diagnosis["suggestions"] = [
                 "Increase Windows virtual memory (page file) size to at least 8GB",
@@ -571,8 +571,8 @@ class GaussianSplattingEvaluator:
                 universal_newlines=True
             )
             
-            self.logger.info("🔄 GS Training started - showing real-time output:")
-            self.logger.info("─" * 60)
+            self.logger.info("[TRAINING] GS Training started - showing real-time output:")
+            self.logger.info("-" * 60)
             
             output_lines = []
             while True:
@@ -594,18 +594,18 @@ class GaussianSplattingEvaluator:
                 
                 # Provide detailed error diagnosis
                 error_diagnosis = self.diagnose_gaussian_splatting_error(full_output)
-                self.logger.error(f"❌ GAUSSIAN SPLATTING TRAINING FAILED")
+                self.logger.error(f"[ERROR] GAUSSIAN SPLATTING TRAINING FAILED")
                 self.logger.error(f"Error Diagnosis: {error_diagnosis['diagnosis']}")
                 if error_diagnosis['suggestions']:
                     self.logger.error(f"Suggestions:")
                     for suggestion in error_diagnosis['suggestions']:
-                        self.logger.error(f"  • {suggestion}")
+                        self.logger.error(f"  - {suggestion}")
                 
                 self.logger.error(f"Return code: {process.returncode}")
                 return False, training_time
             
-            self.logger.info("─" * 60)
-            self.logger.info(f"✓ GS training completed in {training_time:.2f} seconds")
+            self.logger.info("-" * 60)
+            self.logger.info(f"[OK] GS training completed in {training_time:.2f} seconds")
             return True, training_time
             
         except subprocess.TimeoutExpired:
@@ -636,8 +636,8 @@ class GaussianSplattingEvaluator:
                 universal_newlines=True
             )
             
-            self.logger.info("🔄 GS Rendering started - showing real-time output:")
-            self.logger.info("─" * 60)
+            self.logger.info("[RENDERING] GS Rendering started - showing real-time output:")
+            self.logger.info("-" * 60)
             
             output_lines = []
             while True:
@@ -657,8 +657,8 @@ class GaussianSplattingEvaluator:
                 self.logger.error(f"Full output: {full_output}")
                 return False
             
-            self.logger.info("─" * 60)
-            self.logger.info("✓ GS rendering completed")
+            self.logger.info("-" * 60)
+            self.logger.info("[OK] GS rendering completed")
             return True
             
         except subprocess.TimeoutExpired:
