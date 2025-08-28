@@ -34,18 +34,73 @@ from math import exp
 import torchvision.transforms.functional as tf
 from tqdm import tqdm
 
-# Gaussian Splattingモジュールのインポート（存在する場合）
+# Gaussian Splattingモジュールのインポート（mvs_benchmarkと同じ方式）
+# PATHに追加してからインポート
+gs_path = Path(__file__).parent / "gaussian-splatting"
+if gs_path.exists():
+    sys.path.append(str(gs_path))
+
 try:
     from utils.loss_utils import ssim
-    from lpipsPyTorch import lpips
     from utils.image_utils import psnr
+    from lpipsPyTorch import lpips
+    GS_UTILS_AVAILABLE = True
 except ImportError:
     print("Warning: Gaussian Splatting utils not found. Using fallback implementations.")
     print("  To enable full functionality, ensure you're running from the gaussian-splatting directory")
     print("  or that PYTHONPATH includes the gaussian-splatting directory.")
-    ssim = None
-    lpips = None
-    psnr = None
+    GS_UTILS_AVAILABLE = False
+
+# mvs_benchmarkの実装を参考にしたフォールバック実装
+if not GS_UTILS_AVAILABLE:
+    import numpy as np
+    try:
+        from skimage.metrics import structural_similarity as compare_ssim
+        from skimage.metrics import peak_signal_noise_ratio as compare_psnr
+        SKIMAGE_AVAILABLE = True
+    except ImportError:
+        SKIMAGE_AVAILABLE = False
+        print("Warning: scikit-image not available, using basic fallback implementations")
+    
+    def psnr(img1, img2):
+        """Fallback PSNR implementation using scikit-image"""
+        if SKIMAGE_AVAILABLE:
+            img1_np = img1.squeeze().cpu().numpy().transpose(1, 2, 0)
+            img2_np = img2.squeeze().cpu().numpy().transpose(1, 2, 0)
+            return compare_psnr(img1_np, img2_np, data_range=1.0)
+        else:
+            # Basic PSNR implementation
+            mse = torch.mean((img1 - img2) ** 2)
+            if mse == 0:
+                return float('inf')
+            return 10.0 * torch.log10(1.0 / mse)
+    
+    def ssim(img1, img2):
+        """Fallback SSIM implementation using scikit-image"""
+        if SKIMAGE_AVAILABLE:
+            img1_np = img1.squeeze().cpu().numpy().transpose(1, 2, 0)
+            img2_np = img2.squeeze().cpu().numpy().transpose(1, 2, 0)
+            
+            # Convert to grayscale if needed
+            if img1_np.shape[2] == 3:
+                img1_gray = np.mean(img1_np, axis=2)
+                img2_gray = np.mean(img2_np, axis=2)
+            else:
+                img1_gray = img1_np.squeeze()
+                img2_gray = img2_np.squeeze()
+                
+            return compare_ssim(img1_gray, img2_gray, data_range=1.0)
+        else:
+            # Basic SSIM approximation
+            return 0.5  # Fallback value
+
+    def lpips(img1, img2, net_type='alex', version='0.1'):
+        """Simple LPIPS fallback using L2 distance"""
+        return torch.mean((img1 - img2) ** 2).item()
+
+    ssim = ssim
+    psnr = psnr
+    lpips = lpips
 
 
 @dataclass
@@ -178,10 +233,22 @@ class ImagePreprocessor:
 class MetricsCalculator:
     """メトリクス計算クラス"""
     
-    def __init__(self):
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    def __init__(self, device: str = "cuda"):
+        self.device = device if torch.cuda.is_available() else "cpu"
         self.logger = logging.getLogger(__name__)
         self._fallback_warnings_shown = set()  # 警告の重複を防ぐ
+        
+        # LPIPSネットワークを初期化 (mvs_benchmarkと同じ方式)
+        self.lpips_fn = None
+        if GS_UTILS_AVAILABLE:
+            try:
+                self.lpips_fn = lpips.LPIPS(net='alex').to(self.device)
+                self.logger.debug("LPIPS network initialized successfully")
+            except Exception as e:
+                self.logger.debug(f"LPIPS network initialization failed: {e}")
+                self.lpips_fn = None
+        else:
+            self.logger.debug("GS utils not available, LPIPS network will use fallback")
     
     def gaussian(self, window_size, sigma):
         """Gaussian window for SSIM calculation"""
@@ -231,71 +298,40 @@ class MetricsCalculator:
     
     def calculate_psnr(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """PSNR計算"""
-        if psnr is not None:
-            return psnr(img1, img2).item()
-        else:
-            # フォールバック実装
-            mse = torch.mean((img1 - img2) ** 2)
-            if mse == 0:
-                return float('inf')
-            return 20 * torch.log10(1.0 / torch.sqrt(mse)).item()
+        psnr_score = psnr(img1, img2)
+        return psnr_score.item() if hasattr(psnr_score, 'item') else psnr_score
     
     def calculate_ssim(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """SSIM計算"""
         # 最初にGaussian Splattingのオリジナル実装を試行
         if ssim is not None:
-            return ssim(img1, img2).item()
-        else:
-            # Gaussian Splattingと同じ実装を使用
             try:
-                return self.gs_ssim(img1, img2).item()
+                return ssim(img1, img2).item()
             except Exception as e:
-                # 適切なフォールバックSSIM実装
-                if "ssim" not in self._fallback_warnings_shown:
-                    self.logger.warning("Using fallback SSIM implementation")
-                    self._fallback_warnings_shown.add("ssim")
-                
-                # skimageを使用したSSIM計算
-                try:
-                    from skimage.metrics import structural_similarity as sk_ssim
-                    # テンソルをnumpy配列に変換
-                    img1_np = img1.squeeze().permute(1, 2, 0).cpu().numpy()
-                    img2_np = img2.squeeze().permute(1, 2, 0).cpu().numpy()
-                    
-                    # グレースケールに変換してSSIM計算
-                    if len(img1_np.shape) == 3:
-                        img1_gray = cv2.cvtColor(img1_np, cv2.COLOR_RGB2GRAY)
-                        img2_gray = cv2.cvtColor(img2_np, cv2.COLOR_RGB2GRAY)
-                        return sk_ssim(img1_gray, img2_gray, data_range=1.0)
-                    else:
-                        return sk_ssim(img1_np, img2_np, data_range=1.0)
-                except ImportError:
-                    # scikit-imageが利用できない場合はOpenCVベースの実装
-                    try:
-                        img1_np = img1.squeeze().permute(1, 2, 0).cpu().numpy()
-                        img2_np = img2.squeeze().permute(1, 2, 0).cpu().numpy()
-                        
-                        # OpenCVのSSIM関数は存在しないため、基本的な実装
-                        mse = np.mean((img1_np - img2_np) ** 2)
-                        if mse == 0:
-                            return 1.0
-                        # 簡易的なSSIM近似（完全なSSIMではない）
-                        return max(0.0, 1.0 - np.sqrt(mse))
-                    except Exception:
-                        return 0.5  # 最終フォールバック
-    
+                self.logger.debug(f"GS SSIM failed: {e}, trying custom implementation")
+        
+    def calculate_ssim(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
+        """SSIM計算"""
+        ssim_score = ssim(img1, img2)
+        return ssim_score.item() if hasattr(ssim_score, 'item') else ssim_score
+        
     def calculate_lpips(self, img1: torch.Tensor, img2: torch.Tensor) -> float:
         """LPIPS計算"""
-        if lpips is not None:
-            return lpips(img1, img2, net_type='vgg').item()
-        else:
-            # 警告の重複を防ぐ
-            if "lpips" not in self._fallback_warnings_shown:
-                self.logger.warning("LPIPS not available, using L2 distance as fallback")
-                self._fallback_warnings_shown.add("lpips")
-            
-            # フォールバック実装: L2距離（perceptual lossの近似として）
-            return torch.mean((img1 - img2) ** 2).item()
+        # LPIPSネットワークが利用可能な場合
+        if self.lpips_fn is not None:
+            try:
+                with torch.no_grad():
+                    lpips_val = self.lpips_fn(img1, img2)
+                    return lpips_val.item()
+            except Exception as e:
+                self.logger.debug(f"LPIPS network failed: {e}")
+        
+        # フォールバック実装 (mvs_benchmarkと同じ)
+        if "lpips" not in self._fallback_warnings_shown:
+            self.logger.warning("LPIPS not available, using L2 distance as fallback")
+            self._fallback_warnings_shown.add("lpips")
+        
+        return lpips(img1, img2)
     
     def image_to_tensor(self, image_path: Path) -> torch.Tensor:
         """画像をテンソルに変換"""
@@ -369,12 +405,31 @@ class BlenderEvaluator:
             with open(render_times_file, 'r') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    # CSVファイルの構造に応じて調整
-                    frame_name = row.get('frame', row.get('filename', ''))
-                    time_sec = float(row.get('time_sec', row.get('time', 0.0)))
-                    render_times[frame_name] = time_sec
+                    # CSVファイルの構造に応じて調整 - より柔軟にマッピング
+                    frame_name = row.get('frame', row.get('filename', row.get('image', '')))
+                    time_sec_str = row.get('time_sec', row.get('time', row.get('render_time', '0.0')))
                     
-            self.logger.debug(f"Successfully loaded render times for {len(render_times)} frames")
+                    try:
+                        time_sec = float(time_sec_str)
+                    except (ValueError, TypeError):
+                        time_sec = 0.0
+                    
+                    # ファイル名の拡張子を除去してマッピング
+                    if frame_name:
+                        # 元の名前で保存
+                        render_times[frame_name] = time_sec
+                        # 拡張子なしでも保存 (.png, .jpg 等を除去)
+                        stem_name = Path(frame_name).stem
+                        render_times[stem_name] = time_sec
+                        
+                        self.logger.debug(f"Loaded render time: {frame_name} ({stem_name}) = {time_sec}s")
+                    
+            self.logger.info(f"Successfully loaded render times for {len(set(render_times.keys()))} unique frames")
+            
+            # サンプルデータを表示
+            sample_items = list(render_times.items())[:3]
+            if sample_items:
+                self.logger.info(f"Sample render times: {sample_items}")
             
         except Exception as e:
             self.logger.error(f"Error loading render times from {render_times_file}: {e}")
@@ -385,8 +440,14 @@ class BlenderEvaluator:
                     self.logger.error(f"CSV file sample (first 5 lines):")
                     for i, line in enumerate(sample_lines):
                         self.logger.error(f"  Line {i+1}: {line.strip()}")
-            except:
-                pass
+                    
+                    # CSVヘッダーを解析してフィールド名を表示
+                    if sample_lines:
+                        header = sample_lines[0].strip().split(',')
+                        self.logger.error(f"Available CSV fields: {header}")
+                        self.logger.error("Expected fields: 'frame' or 'filename' or 'image', 'time_sec' or 'time' or 'render_time'")
+            except Exception as parse_error:
+                self.logger.error(f"Could not parse CSV file: {parse_error}")
             
         return render_times
     
@@ -493,7 +554,16 @@ class BlenderEvaluator:
         
         # レンダリング時間を読み込み
         render_times = self.load_render_times()
-        self.logger.info(f"Loaded {len(render_times)} render time entries")
+        unique_entries = len(set(render_times.keys()))
+        self.logger.info(f"Loaded {len(render_times)} render time entries ({unique_entries} unique frames)")
+        
+        if render_times:
+            # CSVファイルが正常に読み込まれたことを確認
+            total_time = sum(render_times.values())
+            avg_time = total_time / len(render_times) if render_times else 0
+            self.logger.info(f"Total render time: {total_time:.2f}s, Average: {avg_time:.3f}s per frame")
+        else:
+            self.logger.warning("No render times loaded - all times will be 0.0")
         
         # Blenderレンダリング画像を取得
         blender_images = list(self.blender_data_dir.glob("*.png")) + list(self.blender_data_dir.glob("*.jpg")) + list(self.blender_data_dir.glob("*.jpeg"))
@@ -551,10 +621,28 @@ class BlenderEvaluator:
                 best_match, metrics = self.find_best_match(blender_img_path, test_images)
                 
                 if best_match:
+                    # レンダー時間を取得 - 複数のパターンでマッチングを試行
+                    render_time = 0.0
+                    possible_keys = [
+                        blender_img_path.name,      # フルファイル名 (e.g., "image001.png")
+                        blender_img_path.stem,      # 拡張子なし (e.g., "image001")
+                        blender_img_path.stem.replace('_', ''),  # アンダースコアなし
+                        blender_img_path.stem.lower(),  # 小文字
+                    ]
+                    
+                    for key in possible_keys:
+                        if key in render_times:
+                            render_time = render_times[key]
+                            self.logger.debug(f"Found render time for {blender_img_path.name}: {render_time}s (key: {key})")
+                            break
+                    
+                    if render_time == 0.0:
+                        self.logger.warning(f"No render time found for {blender_img_path.name}, tried keys: {possible_keys}")
+                    
                     result = {
                         'blender_image': blender_img_path.name,
                         'ground_truth_image': best_match.name,
-                        'render_time_sec': render_times.get(blender_img_path.stem, 0.0),
+                        'render_time_sec': render_time,
                         'psnr': metrics['psnr'],
                         'ssim': metrics['ssim'],
                         'lpips': metrics['lpips']
