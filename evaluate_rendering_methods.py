@@ -406,8 +406,11 @@ class BlenderEvaluator:
                 reader = csv.DictReader(f)
                 for row in reader:
                     # CSVファイルの構造に応じて調整 - より柔軟にマッピング
-                    frame_name = row.get('frame', row.get('filename', row.get('image', '')))
-                    time_sec_str = row.get('time_sec', row.get('time', row.get('render_time', '0.0')))
+                    frame_name = row.get('Frame', row.get('frame', row.get('filename', row.get('image', ''))))
+                    time_sec_str = row.get('RenderTime_seconds', row.get('time_sec', row.get('time', row.get('render_time', '0.0'))))
+                    
+                    # デバッグログ：CSVの各行を確認
+                    self.logger.debug(f"CSV row - Frame: '{frame_name}', RenderTime_seconds: '{time_sec_str}'")
                     
                     try:
                         time_sec = float(time_sec_str)
@@ -436,7 +439,7 @@ class BlenderEvaluator:
                         ryugu_png_key = f"ryugu_render_{frame_num:04d}.png"
                         render_times[ryugu_png_key] = time_sec
                         
-                        self.logger.debug(f"Mapped frame {frame_num} -> {ryugu_key} = {time_sec}s")
+                        self.logger.debug(f"Mapped frame {frame_num} -> keys: ['{frame_num}', '{ryugu_key}', '{ryugu_png_key}'] = {time_sec}s")
                         
                     except ValueError:
                         # frame_nameが数値でない場合はスキップ
