@@ -357,14 +357,32 @@ class MetricsCalculator:
         else:
             return float(result)
     
-    def image_to_tensor(self, image_path: Path) -> torch.Tensor:
-        """画像をテンソルに変換"""
-        image = Image.open(image_path).convert('RGB')
-        tensor = tf.to_tensor(image).unsqueeze(0)[:, :3, :, :].to(self.device)
-        return tensor
+    def image_to_tensor(self, image_path: Path, max_size: int = 512) -> torch.Tensor:
+        """画像をテンソルに変換（メモリ効率を考慮してリサイズ）"""
+        try:
+            image = Image.open(image_path).convert('RGB')
+            
+            # メモリ使用量を削減するため画像をリサイズ
+            w, h = image.size
+            if max(w, h) > max_size:
+                if w > h:
+                    new_w, new_h = max_size, int(h * max_size / w)
+                else:
+                    new_w, new_h = int(w * max_size / h), max_size
+                image = image.resize((new_w, new_h), Image.LANCZOS)
+                self.logger.debug(f"Resized image from {w}x{h} to {new_w}x{new_h} for memory efficiency")
+            
+            tensor = tf.to_tensor(image).unsqueeze(0)[:, :3, :, :].to(self.device)
+            return tensor
+            
+        except Exception as e:
+            self.logger.error(f"Error loading image {image_path}: {e}")
+            raise
     
     def calculate_metrics(self, img1_path: Path, img2_path: Path) -> Dict[str, float]:
-        """2つの画像間のすべてのメトリクスを計算"""
+        """2つの画像間のすべてのメトリクスを計算（メモリ効率とエラー処理を改善）"""
+        import gc
+        
         try:
             self.logger.debug(f"DEBUG: Converting {img1_path.name} to tensor")
             img1_tensor = self.image_to_tensor(img1_path)
@@ -396,14 +414,45 @@ class MetricsCalculator:
             lpips_val = self.calculate_lpips(img1_tensor, img2_tensor)
             self.logger.debug(f"DEBUG: All metrics calculated successfully")
             
+            # メモリを明示的に解放
+            del img1_tensor, img2_tensor
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
+            
             return {
                 'psnr': psnr_val,
                 'ssim': ssim_val,
                 'lpips': lpips_val
             }
         
+        except RuntimeError as e:
+            if "out of memory" in str(e).lower() or "defaultcpuallocator" in str(e).lower():
+                self.logger.warning(f"Memory allocation failed for {img1_path.name} vs {img2_path.name}: {e}")
+                self.logger.warning("Returning fallback metrics due to memory constraints")
+                
+                # メモリクリアを試行
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                gc.collect()
+                
+                # メモリ不足時のフォールバック値
+                return {
+                    'psnr': float('nan'),
+                    'ssim': float('nan'),
+                    'lpips': float('nan')
+                }
+            else:
+                raise
+        
         except Exception as e:
             self.logger.error(f"Error calculating metrics for {img1_path} vs {img2_path}: {e}")
+            
+            # メモリクリアを試行
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
+            
             return {
                 'psnr': float('nan'),
                 'ssim': float('nan'),
@@ -503,7 +552,10 @@ class BlenderEvaluator:
         return render_times
     
     def find_best_match(self, blender_image_path: Path, test_images: List[Path]) -> Tuple[Path, Dict[str, float]]:
-        """Blenderレンダリング画像に最も近い評価用画像を見つける"""
+        """Blenderレンダリング画像に最も近い評価用画像を見つける（一時ファイル処理を改善）"""
+        import tempfile
+        import uuid
+        
         self.logger.info(f"DEBUG: Finding best match for {blender_image_path.name} among {len(test_images)} test images")
         
         # Blender画像を前処理
@@ -524,17 +576,28 @@ class BlenderEvaluator:
         best_score = float('-inf')
         processed_count = 0
         
-        # 一時ファイルとして保存
-        temp_blender_path = self.blender_data_dir / "temp_processed_blender.png"
+        # 一意の一時ファイル名を作成
+        temp_id = str(uuid.uuid4())[:8]
+        temp_blender_path = None
+        
         try:
+            # より安全な一時ファイル作成
+            with tempfile.NamedTemporaryFile(suffix=f"_blender_{temp_id}.png", delete=False, dir=str(self.blender_data_dir)) as tf:
+                temp_blender_path = Path(tf.name)
+            
+            # 画像を保存
             success = cv2.imwrite(str(temp_blender_path), processed_blender_img)
             if not success:
                 raise ValueError(f"Failed to save processed Blender image to {temp_blender_path}")
-        except Exception as e:
-            raise ValueError(f"Error saving processed Blender image: {e}")
-        
-        try:
+            
+            # 保存後にファイルが存在することを確認
+            if not temp_blender_path.exists():
+                raise ValueError(f"Temporary Blender file was not created: {temp_blender_path}")
+            
+            self.logger.debug(f"Successfully created temporary Blender file: {temp_blender_path}")
+            
             for test_image_path in test_images:
+                temp_test_path = None
                 try:
                     # テスト画像を前処理
                     test_img = cv2.imread(str(test_image_path))
@@ -544,11 +607,18 @@ class BlenderEvaluator:
                     
                     processed_test_img = self.preprocessor.preprocess(test_img)
                     
-                    # 一時ファイルとして保存
-                    temp_test_path = self.test_data_dir / "temp_processed_test.png"
+                    # 一意の一時ファイル名でテスト画像を保存
+                    with tempfile.NamedTemporaryFile(suffix=f"_test_{temp_id}.png", delete=False, dir=str(self.test_data_dir)) as tf:
+                        temp_test_path = Path(tf.name)
+                    
                     success = cv2.imwrite(str(temp_test_path), processed_test_img)
                     if not success:
                         self.logger.debug(f"Failed to save processed test image {test_image_path}")
+                        continue
+                    
+                    # 保存後にファイルが存在することを確認
+                    if not temp_test_path.exists():
+                        self.logger.debug(f"Temporary test file was not created: {temp_test_path}")
                         continue
                     
                     # メトリクスを計算
@@ -567,18 +637,24 @@ class BlenderEvaluator:
                             best_metrics = metrics
                             self.logger.debug(f"New best match: {test_image_path.name} with score {score:.4f}")
                     
-                    # 一時ファイル削除
-                    if temp_test_path.exists():
-                        temp_test_path.unlink()
-                        
                 except Exception as e:
                     self.logger.debug(f"Error processing test image {test_image_path}: {e}")
-                    continue
+                finally:
+                    # テスト用一時ファイルのクリーンアップ
+                    if temp_test_path and temp_test_path.exists():
+                        try:
+                            temp_test_path.unlink()
+                        except Exception as cleanup_e:
+                            self.logger.debug(f"Failed to cleanup test temp file {temp_test_path}: {cleanup_e}")
             
         finally:
-            # 一時ファイル削除
-            if temp_blender_path.exists():
-                temp_blender_path.unlink()
+            # Blender用一時ファイルのクリーンアップ
+            if temp_blender_path and temp_blender_path.exists():
+                try:
+                    temp_blender_path.unlink()
+                    self.logger.debug(f"Cleaned up temporary Blender file: {temp_blender_path}")
+                except Exception as cleanup_e:
+                    self.logger.debug(f"Failed to cleanup Blender temp file {temp_blender_path}: {cleanup_e}")
         
         self.logger.debug(f"Processed {processed_count} test images for {blender_image_path.name}")
         
@@ -868,9 +944,12 @@ class GaussianSplattingEvaluator:
         elif "paging file" in stderr_lower or "virtual memory" in stderr_lower:
             diagnosis["diagnosis"] = "Virtual memory (page file) insufficient"
             diagnosis["suggestions"] = [
-                "Increase Windows virtual memory (page file) size to at least 8GB",
-                "Close other memory-intensive applications",
-                "Consider upgrading system RAM"
+                "Increase Windows virtual memory (page file) size to at least 16GB",
+                "System Properties > Advanced > Performance Settings > Advanced > Virtual memory > Change",
+                "Set custom size: Initial = 16384 MB, Maximum = 32768 MB",
+                "Close other memory-intensive applications (browsers, IDEs, etc.)",
+                "Try restarting Windows to refresh memory allocation",
+                "Consider upgrading system RAM to 16GB+ for stable GS training"
             ]
         elif ("out of memory" in stderr_lower or "cuda out of memory" in stderr_lower or 
               "cublas_status_alloc_failed" in stderr_lower or "cublascreate" in stderr_lower):
@@ -920,8 +999,12 @@ class GaussianSplattingEvaluator:
             sys.executable, "train.py",
             "-s", str(abs_data_path),
             "-m", str(abs_model_path),
-            "--resolution", "2",  # Reduce image resolution to save VRAM
+            "--resolution", "4",  # Further reduce resolution (was 2, now 4 = 1/4 original)
             "--data_device", "cpu",  # Store images in CPU memory
+            "--densify_grad_threshold", "0.01",  # Reduce densification sensitivity (default: 0.0002)
+            "--densify_from_iter", "1000",  # Start densification later (default: 500)
+            "--densify_until_iter", "10000",  # End densification earlier (default: 15000)
+            "--opacity_reset_interval", "5000",  # Less frequent opacity resets (default: 3000)
         ]
         
         # Enable eval mode based on data format - simplified logic
@@ -952,15 +1035,31 @@ class GaussianSplattingEvaluator:
                 train_cmd.extend(["--images", self.image_dir.name])
                 self.logger.info(f"Using images directory: {self.image_dir.name}")
         
-        # Add memory optimization
+        # Add aggressive memory optimization
+        train_cmd.extend(["--sh_degree", "1"])  # Reduce spherical harmonics (default: 3)
         try:
             import psutil
             memory = psutil.virtual_memory()
-            if memory.total / (1024**3) < 16:  # Less than 16GB RAM
-                train_cmd.extend(["--sh_degree", "2"])
-                self.logger.info("Added memory optimization due to limited RAM")
+            total_gb = memory.total / (1024**3)
+            available_gb = memory.available / (1024**3)
+            
+            self.logger.info(f"System memory: {total_gb:.1f}GB total, {available_gb:.1f}GB available")
+            
+            if total_gb < 16:  # Less than 16GB RAM
+                train_cmd.extend(["--iterations", "10000"])  # Reduce training iterations (default: 30000)
+                self.logger.info("Added aggressive memory optimization due to limited RAM")
+            elif total_gb < 32:  # Less than 32GB RAM
+                train_cmd.extend(["--iterations", "15000"])  # Moderate reduction
+                self.logger.info("Added moderate memory optimization")
+            
+            # Force CPU mode if available memory is very low
+            if available_gb < 4:
+                self.logger.warning("Very low available memory, forcing CPU-only mode")
+                train_cmd.extend(["--test_iterations", "7000", "10000"])  # Reduce test frequency
+                
         except ImportError:
-            self.logger.info("psutil not available, skipping memory optimization")
+            self.logger.info("psutil not available, applying default memory optimization")
+            train_cmd.extend(["--iterations", "10000"])  # Conservative default
         
         self.logger.info(f"Training command: {' '.join(train_cmd)}")
         start_time = time.time()
@@ -1518,10 +1617,16 @@ class RenderingMethodsEvaluator:
         
         # Blenderサマリー
         if blender_results:
+            # 安全な統計計算（nan値を除外）
             avg_blender_time = np.mean([r['render_time_sec'] for r in blender_results])
-            avg_blender_psnr = np.nanmean([r['psnr'] for r in blender_results])
-            avg_blender_ssim = np.nanmean([r['ssim'] for r in blender_results])
-            avg_blender_lpips = np.nanmean([r['lpips'] for r in blender_results])
+            
+            blender_psnr_values = [r['psnr'] for r in blender_results if not math.isnan(r['psnr'])]
+            blender_ssim_values = [r['ssim'] for r in blender_results if not math.isnan(r['ssim'])]
+            blender_lpips_values = [r['lpips'] for r in blender_results if not math.isnan(r['lpips'])]
+            
+            avg_blender_psnr = np.mean(blender_psnr_values) if blender_psnr_values else float('nan')
+            avg_blender_ssim = np.mean(blender_ssim_values) if blender_ssim_values else float('nan')
+            avg_blender_lpips = np.mean(blender_lpips_values) if blender_lpips_values else float('nan')
             
             print(f"\nBLENDER (Mesh-based) RESULTS:")
             print(f"  Frames evaluated: {len(blender_results)}")
@@ -1532,10 +1637,16 @@ class RenderingMethodsEvaluator:
         
         # Gaussian Splattingサマリー
         if gs_results:
+            # 安全な統計計算（nan値を除外）
             avg_gs_time = np.mean([r['render_time_sec'] for r in gs_results])
-            avg_gs_psnr = np.nanmean([r['psnr'] for r in gs_results])
-            avg_gs_ssim = np.nanmean([r['ssim'] for r in gs_results])
-            avg_gs_lpips = np.nanmean([r['lpips'] for r in gs_results])
+            
+            gs_psnr_values = [r['psnr'] for r in gs_results if not math.isnan(r['psnr'])]
+            gs_ssim_values = [r['ssim'] for r in gs_results if not math.isnan(r['ssim'])]
+            gs_lpips_values = [r['lpips'] for r in gs_results if not math.isnan(r['lpips'])]
+            
+            avg_gs_psnr = np.mean(gs_psnr_values) if gs_psnr_values else float('nan')
+            avg_gs_ssim = np.mean(gs_ssim_values) if gs_ssim_values else float('nan')
+            avg_gs_lpips = np.mean(gs_lpips_values) if gs_lpips_values else float('nan')
             
             print(f"\nGAUSSIAN SPLATTING RESULTS:")
             print(f"  Total training time: {gs_training_time:.1f} sec")
@@ -1551,12 +1662,14 @@ class RenderingMethodsEvaluator:
             print("OVERALL COMPARISON SUMMARY")
             print("="*80)
             
-            # Blender全体平均
-            blender_avg_accuracy = np.nanmean([r['psnr'] for r in blender_results])
+            # Blender全体平均（安全な計算）
+            blender_psnr_for_comparison = [r['psnr'] for r in blender_results if not math.isnan(r['psnr'])]
+            blender_avg_accuracy = np.mean(blender_psnr_for_comparison) if blender_psnr_for_comparison else float('nan')
             blender_avg_render_time = np.mean([r['render_time_sec'] for r in blender_results])
             
-            # Gaussian Splatting全体平均  
-            gs_avg_accuracy = np.nanmean([r['psnr'] for r in gs_results])
+            # Gaussian Splatting全体平均（安全な計算）
+            gs_psnr_for_comparison = [r['psnr'] for r in gs_results if not math.isnan(r['psnr'])]
+            gs_avg_accuracy = np.mean(gs_psnr_for_comparison) if gs_psnr_for_comparison else float('nan')
             gs_avg_render_time = np.mean([r['render_time_sec'] for r in gs_results])
             
             print(f"\nFINAL RESULTS - AVERAGE ACCURACY (PSNR):")
@@ -1568,23 +1681,32 @@ class RenderingMethodsEvaluator:
             print(f"  Gaussian Splatting:       {gs_avg_render_time:.3f} sec/frame")
             print(f"  GS Training Time:         {gs_training_time:.1f} sec (one-time)")
             
-            # 優位性の判定
-            if blender_avg_accuracy > gs_avg_accuracy:
-                accuracy_winner = "Blender"
-                accuracy_diff = blender_avg_accuracy - gs_avg_accuracy
+            # 優位性の判定（nan値を考慮）
+            print(f"\nCOMPARISON ANALYSIS:")
+            
+            # 精度比較
+            if math.isnan(blender_avg_accuracy) and math.isnan(gs_avg_accuracy):
+                print(f"  Accuracy Winner:    N/A (both methods failed to compute metrics)")
+            elif math.isnan(blender_avg_accuracy):
+                print(f"  Accuracy Winner:    Gaussian Splatting (Blender metrics failed)")
+            elif math.isnan(gs_avg_accuracy):
+                print(f"  Accuracy Winner:    Blender (Gaussian Splatting metrics failed)")
             else:
-                accuracy_winner = "Gaussian Splatting"
-                accuracy_diff = gs_avg_accuracy - blender_avg_accuracy
-                
+                if blender_avg_accuracy > gs_avg_accuracy:
+                    accuracy_winner = "Blender"
+                    accuracy_diff = blender_avg_accuracy - gs_avg_accuracy
+                else:
+                    accuracy_winner = "Gaussian Splatting"
+                    accuracy_diff = gs_avg_accuracy - blender_avg_accuracy
+                print(f"  Accuracy Winner:    {accuracy_winner} (+{accuracy_diff:.2f} dB advantage)")
+            
+            # 速度比較
             if blender_avg_render_time < gs_avg_render_time:
                 speed_winner = "Blender"
                 speed_ratio = gs_avg_render_time / blender_avg_render_time
             else:
                 speed_winner = "Gaussian Splatting"
                 speed_ratio = blender_avg_render_time / gs_avg_render_time
-            
-            print(f"\nCOMPARISON ANALYSIS:")
-            print(f"  Accuracy Winner:    {accuracy_winner} (+{accuracy_diff:.2f} dB advantage)")
             print(f"  Speed Winner:       {speed_winner} ({speed_ratio:.1f}x faster)")
             print("="*80)
         elif blender_results or gs_results:
