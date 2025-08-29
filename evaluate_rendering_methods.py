@@ -241,16 +241,18 @@ class MetricsCalculator:
         self._fallback_warnings_shown = set()  # 警告の重複を防ぐ
         
         # LPIPSネットワークを初期化 (mvs_benchmarkと同じ方式)
+        # デバッグのため一時的に無効化
         self.lpips_fn = None
-        if GS_UTILS_AVAILABLE:
-            try:
-                self.lpips_fn = lpips.LPIPS(net='alex').to(self.device)
-                self.logger.debug("LPIPS network initialized successfully")
-            except Exception as e:
-                self.logger.debug(f"LPIPS network initialization failed: {e}")
-                self.lpips_fn = None
-        else:
-            self.logger.debug("GS utils not available, LPIPS network will use fallback")
+        self.logger.info("DEBUG: LPIPS network disabled to debug hanging issue")
+        # if GS_UTILS_AVAILABLE:
+        #     try:
+        #         self.lpips_fn = lpips.LPIPS(net='alex').to(self.device)
+        #         self.logger.debug("LPIPS network initialized successfully")
+        #     except Exception as e:
+        #         self.logger.debug(f"LPIPS network initialization failed: {e}")
+        #         self.lpips_fn = None
+        # else:
+        #     self.logger.debug("GS utils not available, LPIPS network will use fallback")
     
     def gaussian(self, window_size, sigma):
         """Gaussian window for SSIM calculation"""
@@ -364,7 +366,9 @@ class MetricsCalculator:
     def calculate_metrics(self, img1_path: Path, img2_path: Path) -> Dict[str, float]:
         """2つの画像間のすべてのメトリクスを計算"""
         try:
+            self.logger.debug(f"DEBUG: Converting {img1_path.name} to tensor")
             img1_tensor = self.image_to_tensor(img1_path)
+            self.logger.debug(f"DEBUG: Converting {img2_path.name} to tensor")
             img2_tensor = self.image_to_tensor(img2_path)
             
             # サイズが異なる場合はリサイズ
@@ -384,9 +388,13 @@ class MetricsCalculator:
             if img1_tensor.shape != img2_tensor.shape:
                 raise ValueError(f"Shape mismatch after resize: {img1_tensor.shape} vs {img2_tensor.shape}")
             
+            self.logger.debug(f"DEBUG: Calculating PSNR")
             psnr_val = self.calculate_psnr(img1_tensor, img2_tensor)
-            ssim_val = self.calculate_ssim(img1_tensor, img2_tensor)
+            self.logger.debug(f"DEBUG: Calculating SSIM")
+            ssim_val = self.calculate_ssim(img1_tensor, img2_tensor)  
+            self.logger.debug(f"DEBUG: Calculating LPIPS")
             lpips_val = self.calculate_lpips(img1_tensor, img2_tensor)
+            self.logger.debug(f"DEBUG: All metrics calculated successfully")
             
             return {
                 'psnr': psnr_val,
@@ -496,15 +504,18 @@ class BlenderEvaluator:
     
     def find_best_match(self, blender_image_path: Path, test_images: List[Path]) -> Tuple[Path, Dict[str, float]]:
         """Blenderレンダリング画像に最も近い評価用画像を見つける"""
-        self.logger.debug(f"Finding best match for {blender_image_path.name} among {len(test_images)} test images")
+        self.logger.info(f"DEBUG: Finding best match for {blender_image_path.name} among {len(test_images)} test images")
         
         # Blender画像を前処理
+        self.logger.info(f"DEBUG: Loading Blender image: {blender_image_path}")
         blender_img = cv2.imread(str(blender_image_path))
         if blender_img is None:
             raise ValueError(f"Cannot load Blender image: {blender_image_path} (check file format and permissions)")
         
+        self.logger.info(f"DEBUG: Preprocessing Blender image")
         try:
             processed_blender_img = self.preprocessor.preprocess(blender_img)
+            self.logger.info(f"DEBUG: Blender image preprocessing completed")
         except Exception as e:
             raise ValueError(f"Failed to preprocess Blender image {blender_image_path}: {e}")
         
@@ -541,7 +552,9 @@ class BlenderEvaluator:
                         continue
                     
                     # メトリクスを計算
+                    self.logger.info(f"DEBUG: Calculating metrics for {test_image_path.name}")
                     metrics = self.metrics_calc.calculate_metrics(temp_blender_path, temp_test_path)
+                    self.logger.info(f"DEBUG: Metrics calculated: PSNR={metrics.get('psnr', 'N/A')}, SSIM={metrics.get('ssim', 'N/A')}, LPIPS={metrics.get('lpips', 'N/A')}")
                     processed_count += 1
                     
                     # スコア計算（PSNR+SSIM-LPIPS の組み合わせ）
@@ -671,12 +684,19 @@ class BlenderEvaluator:
         results = []
         failed_evaluations = 0
         
-        for blender_img_path in tqdm(blender_images, desc="Evaluating Blender renders"):
+        self.logger.info(f"DEBUG: Starting evaluation of {len(blender_images)} Blender images")
+        
+        for i, blender_img_path in enumerate(blender_images):
+            if i >= 3:  # テスト用：最初の3枚だけ処理してハング箇所を特定
+                self.logger.info(f"DEBUG: Stopping after 3 images for debugging")
+                break
             try:
-                self.logger.debug(f"Evaluating Blender image: {blender_img_path}")
+                self.logger.info(f"DEBUG: Processing Blender image {i+1}/{len(blender_images)}: {blender_img_path.name}")
                 
                 # 最適なマッチを見つける
+                self.logger.info(f"DEBUG: Starting find_best_match for {blender_img_path.name}")
                 best_match, metrics = self.find_best_match(blender_img_path, test_images)
+                self.logger.info(f"DEBUG: find_best_match completed for {blender_img_path.name}")
                 
                 if best_match:
                     # レンダー時間を取得 - 複数のパターンでマッチングを試行
@@ -1572,6 +1592,58 @@ class RenderingMethodsEvaluator:
         else:
             print("\n❌ BOTH EVALUATIONS FAILED - Please check the error messages above")
             print("="*80)
+        
+        # 全データの統計サマリー（平均値と標準偏差）を追加
+        print("\n" + "="*80)
+        print("DETAILED STATISTICS SUMMARY")
+        print("="*80)
+        
+        if blender_results:
+            # Blenderの統計計算
+            blender_psnr_values = [r['psnr'] for r in blender_results if not math.isnan(r['psnr'])]
+            blender_ssim_values = [r['ssim'] for r in blender_results if not math.isnan(r['ssim'])]
+            blender_lpips_values = [r['lpips'] for r in blender_results if not math.isnan(r['lpips'])]
+            blender_time_values = [r['render_time_sec'] for r in blender_results]
+            
+            blender_psnr_mean = np.mean(blender_psnr_values) if blender_psnr_values else float('nan')
+            blender_psnr_std = np.std(blender_psnr_values) if blender_psnr_values else float('nan')
+            blender_ssim_mean = np.mean(blender_ssim_values) if blender_ssim_values else float('nan')
+            blender_ssim_std = np.std(blender_ssim_values) if blender_ssim_values else float('nan')
+            blender_lpips_mean = np.mean(blender_lpips_values) if blender_lpips_values else float('nan')
+            blender_lpips_std = np.std(blender_lpips_values) if blender_lpips_values else float('nan')
+            blender_time_mean = np.mean(blender_time_values)
+            blender_time_std = np.std(blender_time_values)
+            
+            print(f"\nBLENDER DETAILED STATISTICS:")
+            print(f"  PSNR:        Mean = {blender_psnr_mean:.2f} ± {blender_psnr_std:.2f} dB")
+            print(f"  SSIM:        Mean = {blender_ssim_mean:.4f} ± {blender_ssim_std:.4f}")
+            print(f"  LPIPS:       Mean = {blender_lpips_mean:.4f} ± {blender_lpips_std:.4f}")
+            print(f"  Render Time: Mean = {blender_time_mean:.3f} ± {blender_time_std:.3f} sec/frame")
+        
+        if gs_results:
+            # Gaussian Splattingの統計計算
+            gs_psnr_values = [r['psnr'] for r in gs_results if not math.isnan(r['psnr'])]
+            gs_ssim_values = [r['ssim'] for r in gs_results if not math.isnan(r['ssim'])]
+            gs_lpips_values = [r['lpips'] for r in gs_results if not math.isnan(r['lpips'])]
+            gs_time_values = [r['render_time_sec'] for r in gs_results]
+            
+            gs_psnr_mean = np.mean(gs_psnr_values) if gs_psnr_values else float('nan')
+            gs_psnr_std = np.std(gs_psnr_values) if gs_psnr_values else float('nan')
+            gs_ssim_mean = np.mean(gs_ssim_values) if gs_ssim_values else float('nan')
+            gs_ssim_std = np.std(gs_ssim_values) if gs_ssim_values else float('nan')
+            gs_lpips_mean = np.mean(gs_lpips_values) if gs_lpips_values else float('nan')
+            gs_lpips_std = np.std(gs_lpips_values) if gs_lpips_values else float('nan')
+            gs_time_mean = np.mean(gs_time_values)
+            gs_time_std = np.std(gs_time_values)
+            
+            print(f"\nGAUSSIAN SPLATTING DETAILED STATISTICS:")
+            print(f"  PSNR:        Mean = {gs_psnr_mean:.2f} ± {gs_psnr_std:.2f} dB")
+            print(f"  SSIM:        Mean = {gs_ssim_mean:.4f} ± {gs_ssim_std:.4f}")
+            print(f"  LPIPS:       Mean = {gs_lpips_mean:.4f} ± {gs_lpips_std:.4f}")
+            print(f"  Render Time: Mean = {gs_time_mean:.3f} ± {gs_time_std:.3f} sec/frame")
+            print(f"  Training Time: {gs_training_time:.1f} sec (one-time setup)")
+        
+        print("="*80)
 
 
 def main():
