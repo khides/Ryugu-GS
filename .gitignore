@@ -1,3 +1,11 @@
+blender_data/
+.history/
+enhanced_images/
+evaluation_results/
+hayabusa_data/
+jpeg_images/
+masked/
+masked_enhanced/
 /Ryugu_FITS/
 /Ryugu_JPEG/
 /Ryugu_Data/*/Input/
